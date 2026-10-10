@@ -218,3 +218,13 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# FarmRL project
+.ipynb_checkpoints/
+data/raw/*
+!data/raw/.gitkeep
+results/models/*
+!results/models/.gitkeep
+report/*.aux
+report/*.log
+report/*.out
