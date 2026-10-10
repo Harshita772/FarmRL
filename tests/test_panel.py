@@ -169,3 +169,46 @@ def test_calibrate_ky_matches_fitted_rainfed_loss():
     target = float(model.rainfed_loss(dry["rain_total"]))                    # what the panel says a rainfed crop loses
     assert target == pytest.approx(0.4, rel=1e-3) and ky == pytest.approx(target / (1 - dry["et_ratio"]), rel=1e-6)
     assert calibrate_ky(cfg, YieldModel(), recommended_schedule) == 1.15     # nothing fitted -> literature value
+
+
+# ------------------------------------------------------------- pesticide calibration
+def pesticide_series(loss, n=24, noise=0.004, seed=0, rain_varies=False):
+    rng = np.random.default_rng(seed)
+    year = np.arange(1990, 1990 + n)
+    x = np.clip(1.6 - 0.05 * (year - 1990) + rng.normal(0, 0.25, n), 0.2, None)      # use falls while yield rises
+    temp = 26 + 0.03 * (year - 1990) + rng.normal(0, 0.3, n)
+    y = 21 * np.exp(0.013 * (year - 1990) - 0.01 * (temp - 26)) * (1 - loss * np.exp(-x / x.mean()))
+    return pd.DataFrame({"year": year, "pesticide_x": x, "avg_temp": temp, "normalisation": "index (test)",
+                         "rain_mm_year": 1083.0 + (rng.normal(0, 40, n) if rain_varies else 0.0),
+                         "yield_q_ha": y * np.exp(rng.normal(0, noise, n))})
+
+
+def test_pesticide_calibration_recovers_loss_despite_opposite_trends():
+    d = pesticide_series(0.30)
+    assert np.corrcoef(d["pesticide_x"], d["yield_q_ha"])[0, 1] < 0          # the raw relation has the wrong sign
+    m = YieldModel()
+    rep = m.calibrate_pesticide(d)
+    assert rep["status"] == "calibrated" and m.pest_loss == pytest.approx(0.30, abs=0.06)
+    assert rep["previous_value"] == 0.35 and rep["n_obs"] == 24 and rep["pesticide_measure"] == "index (test)"
+    assert rep["controls"] == ["year", "temperature"] and rep["controls_dropped_no_variation"] == ["rainfall"]
+    assert rep["r2_with_pesticide"] > rep["r2_controls_only"]
+    assert YieldModel().calibrate_pesticide(pesticide_series(0.30, rain_varies=True))["controls"][-1] == "rainfall"
+
+
+def test_pesticide_calibration_keeps_previous_value_without_signal(tmp_path):
+    d = pesticide_series(0.0, noise=0.02, seed=3)
+    d["yield_q_ha"] *= np.exp(-0.05 * (d["pesticide_x"] - 1))                 # more use, slightly lower yield
+    m = YieldModel(pest_loss=0.35)
+    rep = m.calibrate_pesticide(d)
+    assert rep["status"].startswith("not calibrated") and m.pest_loss == 0.35 and "kept" in rep["quality_note"]
+    weak = YieldModel()
+    report = weak.calibrate_pesticide(pesticide_series(0.05, noise=0.03, seed=5))
+    if report["status"] == "calibrated":
+        assert "weak" in report["quality_note"] or abs(report["t_ratio"]) >= 2
+    weak.report = {"identified": {}, "pesticide": report}
+    weak.save(tmp_path / "p.yaml", source="test")
+    import yaml
+    saved = yaml.safe_load((tmp_path / "p.yaml").read_text())
+    assert saved["fit"]["pest_loss_status"] == report["status"] and "quality_note" in saved["fit"]["pesticide"]
+    with pytest.raises(ValueError):
+        YieldModel().calibrate_pesticide(d.head(5))

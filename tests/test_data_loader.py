@@ -84,20 +84,54 @@ def test_fit_table_joins_district_weather(tmp_path):
     assert np.isclose(table["rain_mm"].iloc[0], 180.0)
 
 
-def test_fao_pesticides(tmp_path):
-    (tmp_path / "yield_df.csv").write_text(
-        ",Area,Item,Year,hg/ha_yield,average_rain_fall_mm_per_year,pesticides_tonnes,avg_temp\n"
-        "0,India,Wheat,1990,21210,1083,75000,25.5\n"
-        "1,India,Wheat,1990,21210,1083,75000,26.1\n"      # the dataset repeats country rows
-        "2,India,Wheat,1991,22810,1083,25000,25.9\n"
-        "3,India,Maize,1990,15180,1083,75000,25.5\n"
-        "4,Albania,Wheat,1990,30197,1485,121,16.4\n")
+FAO_HEADER = ",Area,Item,Year,hg/ha_yield,average_rain_fall_mm_per_year,pesticides_tonnes,avg_temp\n"
+
+
+def write_yield_df(raw, years=(1990, 1991, 1993), stations=(25.0, 26.0, 27.0)):
+    """yield_df.csv as distributed: one row per temperature station for every year."""
+    rows, i = [], 0
+    for y in years:
+        for t in stations:
+            rows.append(f"{i},India,Wheat,{y},{21000 + 1000 * (y - 1990)},1083,{75000 - 25000 * (y - 1990)},{t}")
+            i += 1
+    rows += [f"{i},India,Maize,1990,15180,1083,75000,25.5", f"{i + 1},Albania,Wheat,1990,30197,1485,121,16.4"]
+    (raw / "yield_df.csv").write_text(FAO_HEADER + "\n".join(rows) + "\n")
+
+
+def test_fao_pesticides_collapses_station_duplicates(tmp_path):
+    write_yield_df(tmp_path)
+    assert len(pd.read_csv(tmp_path / "yield_df.csv").query("Area == 'India' and Item == 'Wheat'")) == 9
     df = dl.load_fao_pesticides(raw=tmp_path, processed=tmp_path)
-    assert list(df["year"]) == [1990, 1991]
-    assert np.allclose(df["yield_q_ha"], [21.21, 22.81])
-    assert np.allclose(df["pesticide_index"], [1.5, 0.5])
+    assert list(df["year"]) == [1990, 1991, 1993] and not df.duplicated("year").any()   # one row per year
+    assert (df["n_temp_rows"] == 3).all() and np.allclose(df["avg_temp"], 26.0)            # stations averaged
+    assert np.allclose(df["yield_q_ha"], [21.0, 22.0, 24.0])
+    assert np.allclose(df["pesticides_t"], [75000, 50000, 0])                             # not multiplied by the repeats
+    assert df["normalisation"].iloc[0].startswith("index") and np.allclose(df["pesticide_x"], df["pesticide_index"])
+    assert np.isclose(df["pesticide_index"].mean(), 1.0) and set(df["source"]) == {"yield_df.csv"}
     with pytest.raises(FileNotFoundError):
         dl.load_fao_pesticides(raw=tmp_path / "nowhere", save=False)
+    with pytest.raises(ValueError):
+        dl.load_fao_pesticides(area="Atlantis", raw=tmp_path, save=False)
+
+
+def test_fao_source_files_restore_missing_year_and_give_kg_per_ha(tmp_path):
+    write_yield_df(tmp_path)
+    fao = tmp_path / "fao"
+    fao.mkdir()
+    years = [1990, 1991, 1992, 1993]
+    (fao / "yield.csv").write_text("Area,Element,Item,Year,Unit,Value\n" + "\n".join(
+        f"India,Yield,Wheat,{y},hg/ha,{21000 + 1000 * (y - 1990)}" for y in years) + "\nIndia,Yield,Maize,1992,hg/ha,1\n")
+    (fao / "pesticides.csv").write_text("Domain,Area,Element,Item,Year,Unit,Value\n" + "\n".join(
+        f"Pesticides Use,India,Use,Pesticides (total),{y},tonnes of active ingredients,{75000 - 25000 * (y - 1990)}" for y in years))
+    (fao / "temp.csv").write_text("year,country,avg_temp\n" + "\n".join(f"{y},India,{t}" for y in years for t in (25.0, 27.0)))
+    df = dl.load_fao_pesticides(raw=tmp_path, save=False).set_index("year")
+    assert list(df.index) == years                                    # 1992 was missing from yield_df.csv
+    assert df.loc[1992, "source"].startswith("raw/fao") and df.loc[1992, "yield_q_ha"] == 23.0
+    assert df.loc[1992, "pesticides_t"] == 25000 and np.isnan(df.loc[1992, "rain_mm_year"])
+    assert df["normalisation"].iloc[0].startswith("index")            # no cropland file -> index, and it says so
+    (fao / "cropland.csv").write_text("Area,Year,Value\n" + "\n".join(f"India,{y},150000" for y in years))
+    kg = dl.load_fao_pesticides(raw=tmp_path, save=False).set_index("year")
+    assert kg["normalisation"].iloc[0].startswith("kg") and kg.loc[1990, "pesticide_x"] == pytest.approx(0.5)
 
 
 def rbi_page(rows):

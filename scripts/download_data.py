@@ -141,8 +141,12 @@ def district_weather(start=2007, end=2018, workers=4, force=False):
 # ------------------------------------------------------------------------------ kaggle
 def kaggle():
     out = RAW / "yield_df.csv"
-    if out.exists():
-        STATUS["kaggle"] = f"already present -> {out.relative_to(ROOT)}"
+    if out.exists():                     # downloaded earlier, or saved here by hand
+        sources = sorted(p.name for p in (RAW / "fao").glob("*.csv")) if (RAW / "fao").exists() else []
+        STATUS["kaggle"] = (f"already present -> {out.relative_to(ROOT)}"
+                            + (f"; source files in data/raw/fao: {', '.join(sources)}" if sources else
+                               "; optional source files (pesticides.csv, rainfall.csv, temp.csv, yield.csv) "
+                               "can go in data/raw/fao/"))
         return
     cred = Path(os.environ.get("KAGGLE_CONFIG_DIR", Path.home() / ".kaggle")) / "kaggle.json"
     if not cred.exists() and not (os.environ.get("KAGGLE_USERNAME") and os.environ.get("KAGGLE_KEY")):
@@ -154,7 +158,9 @@ def kaggle():
     3. Re-run:  conda run -n TogAI python scripts/download_data.py kaggle
   Or download yield_df.csv by hand from
     https://www.kaggle.com/datasets/{KAGGLE_DATASET}
-  and save it as data/raw/yield_df.csv""")
+  and save it as data/raw/yield_df.csv. The dataset's four source files (pesticides.csv,
+  rainfall.csv, temp.csv, yield.csv) are optional; put them in data/raw/fao/ and the
+  loader uses them to restore years that yield_df.csv drops.""")
         return
     cmd = [sys.executable, "-m", "kaggle", "datasets", "download", "-d", KAGGLE_DATASET,
            "-f", "yield_df.csv", "-p", str(RAW), "--unzip"]

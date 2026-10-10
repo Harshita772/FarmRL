@@ -56,13 +56,16 @@ for ref in sorted(dl.REFERENCE.glob("cacp_wheat_cost_*.csv")):
     state = ref.stem.replace("cacp_wheat_cost_", "")
     optional(f"cost of cultivation ({state})", lambda s=state: dl.load_cost_of_cultivation(state=s))
 fao = optional("FAO yield + pesticides", dl.load_fao_pesticides)
+if fao is not None:
+    print(f"      {fao['year'].min()}-{fao['year'].max()}, {int(fao['n_temp_rows'].max())} repeated rows per year "
+          f"collapsed; pesticide measure: {fao['normalisation'].iloc[0]}")
 optional("Agmarknet mandi prices", dl.load_agmarknet)
 
 model, report = fitting.fit_yield_model(cfg, panel, pest_df=fao)
 print()
 print("\n".join(fitting.describe(model, report)))
 if fao is None:
-    print("  pest_loss is the prior: no pesticide table to fit it on (yield_df.csv missing)")
+    print("  pest_loss is the prior: no pesticide table to calibrate it on (yield_df.csv missing)")
 out = ROOT / env_cfg["fitted_params"]
 model.save(out, source=f"ICRISAT district-level data ({panel['state'].nunique()} states, {panel['year'].min()}-"
                        f"{panel['year'].max()}) + NASA POWER district weather; region {region}")

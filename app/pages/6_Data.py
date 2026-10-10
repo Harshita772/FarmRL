@@ -9,6 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import common  # noqa: E402
 from farmrl import data_loader as dl  # noqa: E402
 from farmrl.viz import interactive, style  # noqa: E402
+from farmrl.yield_model import YieldModel  # noqa: E402
 
 run, policies = common.setup("Data")
 st.title("Data")
@@ -95,10 +96,35 @@ if files:
                                   f"Operational cost items, {c['year'].max()}", "INR per hectare", horizontal=True))
 
 # -------------------------------------------------------------------- optional datasets
-files = section("Pesticide use (FAO)", r"fao_.+\.csv", "Kaggle crop yield prediction dataset (FAO / World Bank).")
+files = section("Pesticide use (FAO)", r"fao_.+\.csv",
+                "Kaggle crop yield prediction dataset (FAOSTAT yield and pesticide use, World Bank rainfall and temperature); "
+                "national series, pesticide use is the total for all crops.")
 if files:
     f = pd.read_csv(P / files[0])
-    common.chart(interactive.scatter(f, "pesticides_t", "yield_q_ha", "Yield vs national pesticide use", "tonnes", "q/ha"))
+    st.caption(f"{len(f)} years, {f['year'].min()}–{f['year'].max()} · pesticide measure: {f['normalisation'].iloc[0]} · "
+               f"{int((f['source'] != 'yield_df.csv').sum())} year(s) restored from the source files")
+    a, b = st.columns(2)
+    with a:
+        common.chart(interactive.line(f, "year", "pesticides_t", "National pesticide use", "tonnes of active ingredient"))
+    with b:
+        common.chart(interactive.line(f, "year", "yield_q_ha", "National wheat yield", "q/ha", style.PALETTE[1]))
+    cal = YieldModel().calibrate_pesticide(f)
+    chart_data = pd.DataFrame({"pesticide use (series mean = 1)": cal["x"], "yield": cal["observed"],
+                               "adjusted": cal["partial_yield"], "year": cal["year"]})
+    a, b = st.columns(2)
+    with a:
+        common.chart(interactive.scatter(chart_data, "pesticide use (series mean = 1)", "yield",
+                                         "Yield vs pesticide use (raw)", "pesticide use (series mean = 1)", "q/ha"))
+    with b:
+        common.chart(interactive.scatter(chart_data, "pesticide use (series mean = 1)", "adjusted",
+                                         "Yield adjusted to the mean year and weather", "pesticide use (series mean = 1)", "q/ha"))
+    lo, hi = cal["interval_90"]
+    used = run.meta["yield_model"].get("pest_loss")
+    st.markdown(f"**Calibrated pesticide loss:** L = {cal['estimate']:.2f} ± {cal['std_err']:.2f} "
+                f"(90% interval {lo:.2f}–{hi:.2f}), n = {cal['n_obs']} national years. {cal['quality_note'].capitalize()}. "
+                f"Controls: {', '.join(cal['controls'])}"
+                + (f"; no variation in the series for: {', '.join(cal['controls_dropped_no_variation'])}" if cal["controls_dropped_no_variation"] else "")
+                + f". **This run used L = {used:.2f}.**")
 files = section("Mandi prices (Agmarknet)", r"wheat_mandi_monthly\.csv", "Agmarknet / data.gov.in monthly mean modal price.")
 if files:
     m = pd.read_csv(P / files[0])

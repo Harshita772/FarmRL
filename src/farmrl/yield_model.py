@@ -14,8 +14,8 @@ for y_max, nitrogen, irrigated share, season rain, heat-stress days) and reports
 held-out years; ``fit`` is the earlier single-region form (nitrogen and rain only), kept
 for comparison. Both use scipy's ``curve_fit``. A parameter the data cannot pin down (estimate on a bound, or a
 standard error larger than the estimate) is NOT kept: it is reset to its prior below and
-reported as ``identified: false``. ``ky`` is a literature constant and ``pest_loss`` is
-only fitted when a pesticide table is supplied (``fit_pesticide``).
+reported as ``identified: false``. ``pest_loss`` is *calibrated*, not fitted, when a
+national pesticide series is supplied (``calibrate_pesticide``); otherwise it is a prior.
 """
 from pathlib import Path
 
@@ -39,6 +39,7 @@ PANEL_NEUTRAL = {"n_coef": PRIORS["n_coef"], "k_dry": 0.0, "r0": NO_RAIN_EFFECT,
 PANEL_START = {"n_coef": 0.02, "k_dry": 0.4, "r0": 150.0, "w_excess": 0.03, "r_opt": 80.0,
                "heat_coef": 0.003}
 A_BOUNDS = (3.0, 95.0)
+PEST_DECAY = 1.0            # k in the pesticide calibration: average use leaves e^-k of the loss
 BOUNDS = {"y_max": (20.0, 90.0), "n_coef": (0.003, 0.06), "w_opt": (250.0, 600.0),
           "w_excess": (0.0, 1.0)}
 FITTED = ["y_max", "n_coef", "w_opt", "w_excess"]
@@ -160,7 +161,7 @@ class YieldModel:
             "predicted": pred, "observed": y, "residuals": resid, "n": n, "water": w,
         }
         if pest_df is not None:
-            self.fit_pesticide(pest_df)
+            self.calibrate_pesticide(pest_df)
         return self.report
 
     # ------------------------------------------------------------------ pooled panel fit
@@ -291,32 +292,88 @@ class YieldModel:
             "holdout_rows": test_rows,
         }
         if pest_df is not None:
-            self.fit_pesticide(pest_df)
+            self.calibrate_pesticide(pest_df)
         return self.report
 
-    def fit_pesticide(self, pest_df, x_col="pesticide_index", y_col="yield_q_ha"):
-        """Fit Y = a [1 - L exp(-k x)] to a (pesticide use, yield) table and adopt L as
-        ``pest_loss`` if it is identified. Returns a small report either way."""
-        d = pest_df.dropna(subset=[x_col, y_col])
-        x, y = d[x_col].to_numpy(float), d[y_col].to_numpy(float)
+    def calibrate_pesticide(self, pest_df, x_col="pesticide_x", y_col="yield_q_ha", year_col="year",
+                            temp_col="avg_temp", rain_col="rain_mm_year", k=PEST_DECAY):
+        """Calibrate ``pest_loss`` on a national (pesticide use, yield) series.
 
-        def f(x, a, loss, k):
-            return a * (1 - loss * np.exp(-k * x))
+            log Y_t = c + g (year_t - mean) + b_T (T_t - mean) [+ b_R (R_t - mean)]
+                      + log(1 - L exp(-k x_t))
 
-        lo, hi = [0.5 * y.max(), 0.0, 0.05], [3.0 * y.max(), 0.9, 20.0]
-        est, cov = curve_fit(f, x, y, p0=[y.max(), 0.3, 1.0], bounds=(lo, hi), maxfev=20000)
-        se = np.sqrt(np.diag(cov))
-        pred = f(x, *est)
-        on_bound = min(est[1] - lo[1], hi[1] - est[1]) < 1e-3
-        ok = bool(not on_bound and np.isfinite(se[1]) and se[1] < est[1])
-        if ok:
-            self.pest_loss = float(est[1])
-        rep = {"n_obs": int(len(y)), "estimate": float(est[1]), "std_err": float(se[1]),
-               "identified": ok, "r2": float(1 - ((y - pred) ** 2).sum() / ((y - y.mean()) ** 2).sum()),
-               "curve": [float(v) for v in est], "x": x, "observed": y, "predicted": pred}
+        x is pesticide use relative to the series mean (or kg/ha), the year term absorbs
+        the technology trend, temperature and rainfall are controls (a control with no
+        variation in the series is dropped and reported). ``L`` is the yield lost with no
+        pesticide at all, i.e. the model's ``pest_loss``; ``k`` is fixed, not estimated:
+        the series is far too short to separate the two, and k = 1 says that average use
+        leaves e^-1 = 37% of that loss in place.
+
+        This is a calibration, not a fit: about two dozen national points, total pesticide
+        use across all crops, one trending series. ``pest_loss`` is updated when the
+        estimate is positive; the report carries the standard error and a plain-language
+        quality note either way.
+        """
+        d = pest_df.dropna(subset=[x_col, y_col, year_col]).sort_values(year_col)
+        if len(d) < 10:
+            raise ValueError(f"need at least 10 years to calibrate the pesticide loss, got {len(d)}")
+        x = d[x_col].to_numpy(float)
+        x = x / x.mean()                                    # scale-free: k refers to average use
+        logy = np.log(d[y_col].to_numpy(float))
+        controls, dropped = {"year": d[year_col].to_numpy(float)}, []
+        for name, col in (("temperature", temp_col), ("rainfall", rain_col)):
+            v = d[col].to_numpy(float) if col in d else np.array([np.nan])
+            if np.isnan(v).any() or np.nanstd(v) < 1e-9:
+                dropped.append(name)
+            else:
+                controls[name] = v
+        Z = np.column_stack([np.ones(len(d))] + [v - v.mean() for v in controls.values()])
+
+        def f(_, loss, *beta):
+            return Z @ np.asarray(beta) + np.log(1 - loss * np.exp(-k * x))
+
+        base, *_ = np.linalg.lstsq(Z, logy, rcond=None)
+        ss_tot = float(((logy - logy.mean()) ** 2).sum())
+        r2_controls = float(1 - ((logy - Z @ base) ** 2).sum() / ss_tot)
+        est, cov = curve_fit(f, x, logy, p0=[0.1, *base], maxfev=20000,
+                             bounds=([0.0] + [-np.inf] * Z.shape[1], [0.9] + [np.inf] * Z.shape[1]))
+        loss, se = float(est[0]), float(np.sqrt(cov[0, 0]))
+        r2 = float(1 - ((logy - f(x, *est)) ** 2).sum() / ss_tot)
+        positive = loss > 1e-4
+        t_ratio = loss / se if se > 0 and np.isfinite(se) else float("nan")
+        if not positive:
+            note = ("after the controls, yield is not higher in years of higher pesticide use; "
+                    "no loss can be calibrated and the previous value is kept")
+        elif abs(t_ratio) < 2:
+            note = (f"weak: the estimate is {t_ratio:.1f} standard errors from zero, so it cannot be told "
+                    "apart from no effect; adding it raises R2 of log-yield only from "
+                    f"{r2_controls:.3f} to {r2:.3f}")
+        else:
+            note = f"the estimate is {t_ratio:.1f} standard errors from zero; R2 {r2_controls:.3f} -> {r2:.3f}"
+        previous = float(self.pest_loss)
+        if positive:
+            self.pest_loss = loss
+        measure = str(d["normalisation"].iloc[0]) if "normalisation" in d else x_col
+        rep = {"status": "calibrated" if positive else "not calibrated (kept previous value)",
+               "method": ("nonlinear least squares of log yield on a year trend, "
+                          + ", ".join(k_ for k_ in controls if k_ != "year")
+                          + (" and " if len(controls) > 1 else "") + f"log(1 - L exp(-{k:g} x)); k fixed"),
+               "pest_loss": float(self.pest_loss), "previous_value": previous,
+               "estimate": loss, "std_err": se, "t_ratio": float(t_ratio),
+               "interval_90": [float(max(0.0, loss - 1.645 * se)), float(min(0.9, loss + 1.645 * se))],
+               "k_fixed": float(k), "n_obs": int(len(d)),
+               "years": [int(d[year_col].min()), int(d[year_col].max())],
+               "controls": list(controls), "controls_dropped_no_variation": dropped,
+               "pesticide_measure": measure, "r2_controls_only": r2_controls, "r2_with_pesticide": r2,
+               "quality_note": note,
+               "x": x, "observed": np.exp(logy), "predicted": np.exp(f(x, *est)),
+               "partial_yield": np.exp(logy - Z[:, 1:] @ np.asarray(est[2:])),   # q/ha at the mean year and weather
+               "year": d[year_col].to_numpy(int)}
         if self.report is not None:
             self.report["pesticide"] = rep
         return rep
+
+    fit_pesticide = calibrate_pesticide        # earlier name
 
     # ------------------------------------------------------------------- persistence
     def params(self):
@@ -333,8 +390,8 @@ class YieldModel:
             if "pesticide" in out["fit"]:
                 out["fit"]["pesticide"] = {k: v for k, v in out["fit"]["pesticide"].items()
                                            if not isinstance(v, np.ndarray)}
-            pest_fitted = out["fit"].get("pesticide", {}).get("identified", False)
-            out["fit"]["identified"]["pest_loss"] = bool(pest_fitted)
+            status = out["fit"].get("pesticide", {}).get("status", "prior (no pesticide data)")
+            out["fit"]["pest_loss_status"] = status
         with open(path, "w") as f:
             yaml.safe_dump(out, f, sort_keys=False)
 
