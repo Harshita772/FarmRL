@@ -1,0 +1,13 @@
+{
+  "boundaryID": "IND-ADM2-76128533",
+  "boundaryName": "India",
+  "boundaryType": "ADM2",
+  "boundaryYearRepresented": "2021",
+  "boundarySource": "Pathways Data Pvt. Ltd., lgdirectory.gov.in",
+  "boundaryLicense": "Open Data Commons Open Database License 1.0",
+  "licenseSource": "geonode.pathwaysdata.com/layers/geonode",
+  "boundarySourceURL": "geonode.pathwaysdata.com/layers/geonode",
+  "sourceDataUpdateDate": "Thu Jan 19 07:31:04 2023",
+  "buildDate": "Dec 12, 2023",
+  "downloaded_from": "https://github.com/wmgeolab/geoBoundaries/raw/9469f09/releaseData/gbOpen/IND/ADM2/geoBoundaries-IND-ADM2_simplified.geojson"
+}

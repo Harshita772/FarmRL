@@ -1,46 +1,118 @@
 params:
-  y_max: 46.762541906043545
-  n_coef: 0.0258321356180382
-  w_opt: 332.12702023974845
-  w_excess: 0.042534111540836375
+  y_max: 49.82029383518054
+  n_coef: 0.020839550299222492
+  w_opt: 400.0
+  w_excess: 0.0
   pest_loss: 0.35
   soil_n: 30.0
-  ky: 1.15
-  y_scale: 1.1250171634037651
-source: ICRISAT district-level data (Haryana, 2008-2017) + NASA POWER season rainfall
+  ky: 0.7065201360875861
+  y_scale: 1.1151709155776304
+  heat_coef: 0.00233718454254169
+  k_dry: 0.39229838131505834
+  r0: 1000000.0
+source: ICRISAT district-level data (15 states, 2008-2017) + NASA POWER district weather;
+  region punjab
 fit:
-  n_obs: 70
-  r2: 0.2366498564679803
-  rmse: 3.65980063470728
+  model: pooled panel with state fixed effects
+  n_obs: 1719
+  n_states: 13
+  n_districts: 206
+  years:
+  - 2008
+  - 2017
+  r2: 0.6859090689151628
+  rmse: 6.020243784059744
+  region: Punjab
+  region_in_panel: true
   assumed_irrigation_mm: 300.0
+  mean_observed_yield: 46.349296363636356
   n_range_kg_ha:
-  - 88.71
-  - 264.97
-  water_range_mm:
-  - 317.96
-  - 573.4200000000001
-  mean_observed_yield: 44.98232571428571
+  - 0.97
+  - 466.66
   identified:
-    y_max: true
     n_coef: true
-    w_opt: true
-    w_excess: true
+    k_dry: true
+    r0: false
+    w_excess: false
+    r_opt: false
+    heat_coef: true
+    y_max: true
     pest_loss: false
   std_err:
-    y_max: 1.039111666585371
-    n_coef: 0.0068519356370912105
-    w_opt: 56.594597582114005
-    w_excess: 0.025997097144405054
+    n_coef: 0.0011279584704454173
+    k_dry: 0.04155901881194942
+    heat_coef: 0.0005759266817397292
   first_pass:
-    y_max:
-      estimate: 46.762541906043545
-      std_err: 1.039111666585371
     n_coef:
-      estimate: 0.0258321356180382
-      std_err: 0.0068519356370912105
-    w_opt:
-      estimate: 332.12702023974845
-      std_err: 56.594597582114005
+      estimate: 0.01938418538156829
+      std_err: 0.001011642504715214
+    k_dry:
+      estimate: 0.4699565529771059
+      std_err: 0.05468776676429014
+    r0:
+      estimate: 629.6546881079252
+      std_err: 427.8563197824565
     w_excess:
-      estimate: 0.042534111540836375
-      std_err: 0.025997097144405054
+      estimate: 0.04782909491939263
+      std_err: 0.010531753784368013
+    r_opt:
+      estimate: 1.5851160964388514e-10
+      std_err: 29.634307119490792
+    heat_coef:
+      estimate: 0.005690202244261079
+      std_err: 0.0005965275020112061
+  r_opt_mm: 100.0
+  state_effects:
+    Bihar: 29.063345110648456
+    Chhattisgarh: 19.6874133819786
+    Gujarat: 35.51830272590685
+    Haryana: 49.24764535211329
+    Himachal Pradesh: 27.68030086825854
+    Jharkhand: 19.914517564770573
+    Karnataka: 17.435176160885682
+    Madhya Pradesh: 38.69743161234618
+    Maharashtra: 20.03914832067989
+    Punjab: 49.82029383518054
+    Rajasthan: 42.92678286826264
+    Uttar Pradesh: 34.83619600955816
+    Uttarakhand: 36.316132924774564
+  holdout:
+    from_year: 2015
+    n_train: 1248
+    n_test: 471
+    r2_train: 0.7069963983496079
+    r2_test: 0.5120976710721772
+    rmse_test: 7.275295223857106
+    r2_test_state_means_only: 0.3999212472220752
+    within_state_skill: 0.18693617017900954
+    by_state:
+      Bihar: -0.4078547361125622
+      Gujarat: -0.019205525073174856
+      Haryana: -1.0256846217891757
+      Himachal Pradesh: -0.196988214550728
+      Karnataka: 0.3565905393914083
+      Madhya Pradesh: -1.2285573296620496
+      Punjab: -1.0555763930254645
+      Rajasthan: 0.29808161377593057
+      Uttar Pradesh: -0.0848937701654553
+      Uttarakhand: 0.8198018362147419
+  comparison:
+    Haryana:
+      n_train: 49
+      n_test: 21
+      single_region_r2_train: 0.00010365567128234332
+      single_region_r2_test: -0.2570281630512852
+      single_region_rmse_test: 3.5110555580750495
+      pooled_r2_test: -1.0256846217891757
+      pooled_rmse_test: 4.457087019594295
+    Punjab:
+      n_train: 77
+      n_test: 33
+      single_region_r2_train: 0.48917252577550474
+      single_region_r2_test: -0.5490447347351077
+      single_region_rmse_test: 4.308700174358211
+      pooled_r2_test: -1.0555763930254645
+      pooled_rmse_test: 4.963420899536607
+  ky_calibrated: true
+  form: pooled
+  y_scale: 1.1151709155776304
