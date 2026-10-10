@@ -295,7 +295,7 @@ def pesticide_response(run=None, table=None):
     except ValueError as why:
         raise SkipFigure(str(why))
     label = files[0].stem.replace("fao_", "").replace("_", ", ").title()
-    fig, axes = plt.subplots(1, 2, figsize=(style.FULL, 2.6), gridspec_kw={"wspace": 0.38})
+    fig, axes = plt.subplots(1, 2, figsize=(style.FULL, 2.6), gridspec_kw={"wspace": 0.55})
     ax = axes[0]
     sc = ax.scatter(cal["x"], cal["observed"], c=cal["year"], cmap=style.SEQUENTIAL, s=20,
                     edgecolor=style.INK_2, lw=0.4)
@@ -309,10 +309,10 @@ def pesticide_response(run=None, table=None):
     ax.plot(grid, level.mean() * (1 - cal["estimate"] * np.exp(-cal["k_fixed"] * grid)), color=style.PALETTE[1],
             label=f"calibrated loss L = {cal['estimate']:.2f} ± {cal['std_err']:.2f}")
     used = run.meta["yield_model"].get("pest_loss")
-    ax.set(xlabel="pesticide use (series mean = 1)", ylabel="yield at the mean year
-and weather (q/ha)",
+    ax.set(xlabel="pesticide use (series mean = 1)", ylabel="yield at the mean year\nand weather (q/ha)",
            title=f"After controls ({', '.join(cal['controls'])}); n = {cal['n_obs']}")
-    ax.legend(loc="upper left", title=None if used is None else f"this run used L = {used:.2f}", title_fontsize=6.5)
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.24), ncol=1,
+              title=None if used is None else f"this run used L = {used:.2f}", title_fontsize=6.5)
     return fig
 
 

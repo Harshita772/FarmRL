@@ -122,6 +122,12 @@ experiment runner, every figure and the dashboard pick it up (and give it its ow
 A figure whose data is missing (for example the pesticide plot without the FAO table) is
 skipped with a warning.
 
+**Pesticide loss.** With the FAO table in `data/raw/`, `prepare_data.py` calibrates
+`pest_loss` on India's national wheat series (24 years, year trend and temperature as
+controls): 0.12 ± 0.08 instead of the earlier placeholder 0.35. It is labelled
+"calibrated", not fitted, in `configs/fitted_params.yaml`; see `data/README.md`. Runs made
+before that (`v1`, `v2`) keep 0.35 in their own snapshot.
+
 The older single-purpose scripts (`train.py`, `evaluate.py`, `plot_results.py`) still work.
 
 ### Regions
