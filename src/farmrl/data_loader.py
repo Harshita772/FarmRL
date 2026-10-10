@@ -38,10 +38,20 @@ SITES = {
 
 SEASON_START = (11, 1)   # month, day
 TRAIN_END = 2016         # seasons <= this are train, later ones are held out
+# Terminal heat stress: days hotter than HEAT_TMAX (deg C, daily maximum) during grain
+# filling, taken as HEAT_WINDOW (month, day) of the harvest year.
+HEAT_TMAX = 30.0
+HEAT_WINDOW = ((2, 15), (3, 31))
+# ICRISAT labels crop years by their first calendar year (2008 = sown Nov 2008) but farm
+# harvest prices by the marketing year: for Punjab the mean price of "year" Y sits on the
+# MSP of crop year Y-1 in every year of the file. So a price row of year Y is season Y-1.
+PRICE_YEAR_OFFSET = 1
+DISTRICT_WEATHER = "weather_districts"   # sub-folder of data/raw, one POWER file per district
 
 _WEATHER_COLS = {"PRECTOTCORR": "rain_mm", "T2M": "t_mean", "T2M_MAX": "t_max",
                  "T2M_MIN": "t_min", "RH2M": "rh", "ALLSKY_SFC_SW_DWN": "srad"}
 _ICRISAT_KEYS = ["Dist Code", "Year", "State Code", "State Name", "Dist Name"]
+_ICRISAT_ON = ["Dist Code", "Year"]
 
 
 def _need(path, how):
@@ -58,12 +68,11 @@ def _write(df, processed, name, save):
 
 
 # ------------------------------------------------------------------------------ weather
-def load_weather(site="ludhiana", raw=RAW, processed=PROCESSED, save=True):
-    """NASA POWER daily CSV -> tidy daily table (date, rain_mm, t_mean, t_max, t_min, rh,
-    srad [MJ/m2/day], et0_mm). POWER's -999 fill value becomes NaN; short gaps (<=5 days)
-    are interpolated, rain gaps are left as NaN."""
-    path = _need(Path(raw) / f"weather_{site}.csv", "run scripts/download_data.py weather")
-    lines = path.read_text().splitlines()
+def read_power(path):
+    """One NASA POWER daily CSV -> tidy daily table (date, rain_mm, t_mean, t_max, t_min,
+    rh, srad [MJ/m2/day], et0_mm, heat_day). POWER's -999 fill value becomes NaN; short
+    gaps (<=5 days) are interpolated, rain gaps are left as NaN."""
+    lines = Path(path).read_text().splitlines()
     start = next((i for i, l in enumerate(lines) if "-END HEADER-" in l), -1) + 1
     df = pd.read_csv(io.StringIO("\n".join(lines[start:])))
     df["date"] = pd.to_datetime(df["YEAR"].astype(str) + df["DOY"].astype(str).str.zfill(3),
@@ -76,7 +85,17 @@ def load_weather(site="ludhiana", raw=RAW, processed=PROCESSED, save=True):
     # Reference evapotranspiration, Hargreaves radiation form (Hargreaves & Samani 1982):
     # ET0 = 0.0135 (T + 17.8) Rs / lambda, with Rs in MJ/m2/day and lambda = 2.45 MJ/kg.
     df["et0_mm"] = (0.0135 * (df["t_mean"] + 17.8) * df["srad"] / 2.45).clip(lower=0)
-    return _write(df.reset_index(drop=True), processed, f"weather_daily_{site}.csv", save)
+    md = df["date"].dt.month * 100 + df["date"].dt.day
+    (m0, d0), (m1, d1) = HEAT_WINDOW
+    hot = (md >= m0 * 100 + d0) & (md <= m1 * 100 + d1) & (df["t_max"] > HEAT_TMAX)
+    df["heat_day"] = hot.astype(int)
+    return df.reset_index(drop=True)
+
+
+def load_weather(site="ludhiana", raw=RAW, processed=PROCESSED, save=True):
+    """Daily weather of one named site (data/raw/weather_<site>.csv), see ``read_power``."""
+    path = _need(Path(raw) / f"weather_{site}.csv", "run scripts/download_data.py weather")
+    return _write(read_power(path), processed, f"weather_daily_{site}.csv", save)
 
 
 def build_seasons(daily, steps=12, step_days=15, start=SEASON_START):
@@ -100,6 +119,8 @@ def build_seasons(daily, steps=12, step_days=15, start=SEASON_START):
                             "t_min": g["t_min"].mean().values,
                             "rh": g["rh"].mean().values,
                             "srad": g["srad"].mean().values})
+        if "heat_day" in season:
+            out["heat_days"] = g["heat_day"].sum().values
         rows.append(out)
     if not rows:
         raise ValueError("no complete season in the daily weather table")
@@ -119,6 +140,8 @@ def season_summary(seasons):
                                         t_mean=("t_mean", "mean")).reset_index()
     out = out.merge(late.groupby("season").agg(late_t_max=("t_max", "mean"),
                                                late_rain_mm=("rain_mm", "sum")).reset_index())
+    if "heat_days" in seasons:
+        out = out.merge(seasons.groupby("season")["heat_days"].sum().reset_index())
     return out.round(3)
 
 
@@ -129,12 +152,14 @@ def split_seasons(seasons, train_end=TRAIN_END):
 
 
 # ------------------------------------------------------------------------------ ICRISAT
-def load_icrisat(crop="wheat", state=None, raw=RAW, processed=PROCESSED, save=True):
+def load_icrisat(crop="wheat", state=None, min_area_kha=0.0, raw=RAW, processed=PROCESSED, save=True):
     """ICRISAT District Level Data -> one row per district-year for ``crop``.
 
-    Every ``icrisat*.csv`` in ``raw`` is merged on the district/year keys, so the crops,
-    fertiliser, irrigation, ... exports can be dropped in side by side. ``state=None``
-    keeps every state present. Area/yield of 0 (ICRISAT's "not reported") becomes NaN.
+    Every ``icrisat*.csv`` in ``raw`` is merged on district code and year, so the crops,
+    fertiliser, irrigation and price exports sit side by side. ``state=None`` keeps every
+    state present; ``min_area_kha`` drops district-years with less crop area than that.
+    The -1 / 0 "not reported" codes become NaN. Harvest prices are shifted to the season
+    they belong to (see PRICE_YEAR_OFFSET) and the irrigated share is clipped to [0, 1].
     """
     files = sorted(Path(raw).glob("icrisat*.csv"))
     if not files:
@@ -145,9 +170,17 @@ def load_icrisat(crop="wheat", state=None, raw=RAW, processed=PROCESSED, save=Tr
         part.columns = [c.strip() for c in part.columns]
         if not set(_ICRISAT_KEYS) <= set(part.columns):
             raise ValueError(f"{f.name}: expected ICRISAT key columns {_ICRISAT_KEYS}")
-        new = [c for c in part.columns if merged is None or c not in merged.columns]
-        merged = part if merged is None else merged.merge(part[_ICRISAT_KEYS + new],
-                                                          on=_ICRISAT_KEYS, how="outer")
+        if any("HARVEST PRICE" in c for c in part.columns):
+            part["Year"] = part["Year"] - PRICE_YEAR_OFFSET
+        if merged is None:
+            merged = part
+            continue
+        new = [c for c in part.columns if c not in merged.columns]
+        names = part.drop_duplicates(_ICRISAT_ON).set_index(_ICRISAT_ON)[["State Name", "Dist Name"]]
+        merged = merged.merge(part[_ICRISAT_ON + new], on=_ICRISAT_ON, how="outer")
+        keys = pd.MultiIndex.from_frame(merged[_ICRISAT_ON])
+        for col in ("State Name", "Dist Name"):      # rows that exist only in the later file
+            merged[col] = merged[col].fillna(pd.Series(names[col].reindex(keys).values, index=merged.index))
     if state is not None:
         merged = merged[merged["State Name"].str.lower() == state.lower()]
     C = crop.upper()
@@ -155,47 +188,77 @@ def load_icrisat(crop="wheat", state=None, raw=RAW, processed=PROCESSED, save=Tr
     if not set(need) <= set(merged.columns):
         raise ValueError(f"ICRISAT files have no {crop} area/production/yield columns")
     out = pd.DataFrame({"state": merged["State Name"], "district": merged["Dist Name"],
-                        "year": merged["Year"].astype(int),
+                        "dist_code": merged["Dist Code"].astype(int), "year": merged["Year"].astype(int),
                         "area_kha": merged[need[0]], "production_kt": merged[need[1]],
                         "yield_kg_ha": merged[need[2]]})
     optional = {"NITROGEN PER HA OF GCA (Kg per ha)": "n_kg_ha",
                 "PHOSPHATE PER HA OF GCA (Kg per ha)": "p_kg_ha",
                 "POTASH PER HA OF GCA (Kg per ha)": "k_kg_ha",
                 "NITROGEN PER HA OF NCA (Kg per ha)": "n_kg_ha_nca",
-                "TOTAL PER HA OF GCA (Kg per ha)": "npk_kg_ha"}
+                "TOTAL PER HA OF GCA (Kg per ha)": "npk_kg_ha",
+                f"{C} IRRIGATED AREA (1000 ha)": "irrigated_area_kha",
+                f"{C} HARVEST PRICE (Rs per Quintal)": "harvest_price"}
     for src, dst in optional.items():
         if src in merged.columns:
             out[dst] = merged[src].values
-    extra = [c for c in merged.columns if re.search(rf"{C}.*IRRIGATED AREA|RAINFALL|{C}.*PRICE", c)]
-    for c in extra:   # only present once the Punjab irrigation / rainfall / price files are added
-        out[re.sub(r"[^a-z0-9]+", "_", c.lower()).strip("_")] = merged[c].values
-    num = out.columns.difference(["state", "district", "year"])
+    num = out.columns.difference(["state", "district", "dist_code", "year"])
     out[num] = out[num].apply(pd.to_numeric, errors="coerce").where(lambda x: x >= 0)
-    out.loc[out["area_kha"] <= 0, ["area_kha", "production_kt", "yield_kg_ha"]] = np.nan
-    out.loc[out["yield_kg_ha"] <= 0, "yield_kg_ha"] = np.nan
+    out.loc[~(out["area_kha"] > 0), ["area_kha", "production_kt", "yield_kg_ha"]] = np.nan
+    out.loc[~(out["yield_kg_ha"] > 0), "yield_kg_ha"] = np.nan
+    if "harvest_price" in out:
+        out.loc[~(out["harvest_price"] > 0), "harvest_price"] = np.nan
+    if "irrigated_area_kha" in out:
+        out["irrigated_share"] = (out["irrigated_area_kha"] / out["area_kha"]).clip(0, 1)
     out["yield_q_ha"] = out["yield_kg_ha"] / 100.0
-    out = out.dropna(subset=["yield_kg_ha"]).sort_values(["state", "district", "year"])
+    out = out.dropna(subset=["yield_kg_ha"])
+    out = out[out["area_kha"] > min_area_kha].sort_values(["state", "district", "year"])
     return _write(out.reset_index(drop=True), processed, f"icrisat_{crop}.csv", save)
 
 
-def build_fit_table(crop="wheat", raw=RAW, processed=PROCESSED, save=True):
-    """District-year yield records joined with that district's season weather.
-
-    Columns used by ``YieldModel.fit``: yield_q_ha, n_kg_ha, rain_mm (plus et0_mm,
-    late_t_max for diagnostics). Districts with no weather file are dropped."""
-    ic = load_icrisat(crop, raw=raw, processed=processed, save=save)
+def load_district_weather(raw=RAW, processed=PROCESSED, save=True, steps=12, step_days=15):
+    """Season summaries for every cached district weather file
+    (data/raw/weather_districts/<dist_code>.csv): dist_code, year (= season), rain_mm,
+    et0_mm, t_mean, late_t_max, late_rain_mm, heat_days."""
+    files = sorted((Path(raw) / DISTRICT_WEATHER).glob("*.csv"))
+    if not files:
+        raise FileNotFoundError(f"no files in {Path(raw) / DISTRICT_WEATHER} -- run "
+                                "scripts/download_data.py district_weather")
     parts = []
-    for site, meta in SITES.items():
-        rows = ic[(ic["district"] == meta["district"]) & (ic["state"] == meta["state"])]
-        if rows.empty or not (Path(raw) / f"weather_{site}.csv").exists():
+    for f in files:
+        try:
+            summary = season_summary(build_seasons(read_power(f), steps, step_days))
+        except ValueError:          # no complete season in this file
             continue
-        wx = season_summary(load_seasons(site, raw=raw, processed=processed, save=save))
-        parts.append(rows.merge(wx, left_on="year", right_on="season").drop(columns="season"))
-    if not parts:
-        raise FileNotFoundError("no ICRISAT district has a matching weather_<site>.csv in "
-                                f"{raw} -- run scripts/download_data.py weather")
-    table = pd.concat(parts, ignore_index=True)
-    return _write(table, processed, "yield_fit_table.csv", save)
+        parts.append(summary.rename(columns={"season": "year"}).assign(dist_code=int(f.stem)))
+    out = pd.concat(parts, ignore_index=True)
+    return _write(out, processed, "district_weather.csv", save)
+
+
+def build_fit_table(crop="wheat", min_area_kha=10.0, raw=RAW, processed=PROCESSED, save=True):
+    """The panel the yield model is fitted on: district-year yield, N/P/K per ha, irrigated
+    share and harvest price (ICRISAT) joined with that district's season weather (rain,
+    temperature, heat-stress days).
+
+    Weather comes from the per-district cache when it exists; otherwise from the named
+    ``SITES`` (a handful of district headquarters), which keeps the pipeline usable before
+    the district download has been run."""
+    ic = load_icrisat(crop, min_area_kha=min_area_kha, raw=raw, processed=processed, save=save)
+    cache = Path(raw) / DISTRICT_WEATHER
+    if cache.exists() and any(cache.glob("*.csv")):
+        table = ic.merge(load_district_weather(raw, processed, save), on=["dist_code", "year"])
+    else:
+        parts = []
+        for site, meta in SITES.items():
+            rows = ic[(ic["district"] == meta["district"]) & (ic["state"] == meta["state"])]
+            if rows.empty or not (Path(raw) / f"weather_{site}.csv").exists():
+                continue
+            wx = season_summary(load_seasons(site, raw=raw, processed=processed, save=save))
+            parts.append(rows.merge(wx, left_on="year", right_on="season").drop(columns="season"))
+        if not parts:
+            raise FileNotFoundError("no ICRISAT district has matching weather in "
+                                    f"{raw} -- run scripts/download_data.py weather district_weather")
+        table = pd.concat(parts, ignore_index=True)
+    return _write(table.reset_index(drop=True), processed, "yield_fit_table.csv", save)
 
 
 # -------------------------------------------------------------------- FAO yield/pesticides
@@ -303,32 +366,50 @@ def price_index(series, window=5):
     Nominal prices grow ~8% a year, so the environment cannot use old rupee values next
     to today's costs; this keeps the real year-to-year deviations and drops the trend."""
     log = np.log(series.astype(float))
-    trend = log.rolling(window, center=True, min_periods=window // 2 + 1).mean()
+    trend = log.rolling(window, center=True, min_periods=min(window // 2 + 1, len(log))).mean()
     return np.exp(log - trend)
 
 
-def load_prices(crop="wheat", raw=RAW, processed=PROCESSED, save=True):
-    """Season price table: season, price (Rs/quintal), source, price_index.
+def load_prices(crop="wheat", region=None, raw=RAW, processed=PROCESSED, save=True):
+    """Season price table: season, price (Rs/quintal), source, price_index, msp.
 
-    The price of season y is what the farmer gets for the crop harvested in April y+1:
-    the mean Apr-Jun mandi modal price where Agmarknet data exist, otherwise the MSP."""
+    The price of season y is what the farmer gets for the crop harvested in April y+1.
+    Priority per season: the mean ICRISAT farm harvest price of ``region``'s districts,
+    then the mean Apr-Jun Agmarknet modal price, then the MSP. ``price_index`` is each
+    price relative to the trend of *its own* source, so splicing sources with different
+    levels does not create artificial jumps. Saved as wheat_prices[_<region>].csv."""
     if crop != "wheat":
         raise ValueError("only wheat prices are wired up")
     table = load_msp(raw, processed, save)
     table["price"] = table["msp"].astype(float)
     table["source"] = "MSP (RBI Handbook)"
+    table["price_index"] = price_index(table["price"])
+    extra = []
     try:
         mandi = load_agmarknet(raw, processed, save)
         harvest = mandi[mandi["date"].dt.month.isin([4, 5, 6])]
-        h = harvest.groupby(harvest["date"].dt.year - 1)["modal_price"].mean()
-        table = table.merge(h.rename("mandi").rename_axis("season").reset_index(),
-                            on="season", how="outer").sort_values("season")
-        use = table["mandi"].notna()
-        table.loc[use, "price"] = table.loc[use, "mandi"]
-        table.loc[use, "source"] = "Agmarknet modal (Apr-Jun)"
+        extra.append((harvest.groupby(harvest["date"].dt.year - 1)["modal_price"].mean(),
+                      "Agmarknet modal (Apr-Jun)"))
     except FileNotFoundError:
         pass
-    table = table.dropna(subset=["price"]).reset_index(drop=True)
-    table["price_index"] = price_index(table["price"]).round(4)
-    return _write(table[["season", "price", "source", "price_index", "msp"]], processed,
-                  "wheat_prices.csv", save)
+    if region is not None:
+        try:
+            ic = load_icrisat(crop, state=region, raw=raw, processed=processed, save=False)
+            if "harvest_price" in ic and ic["harvest_price"].notna().any():
+                series = ic.dropna(subset=["harvest_price"]).groupby("year")["harvest_price"].mean()
+                extra.append((series, f"ICRISAT farm harvest price ({region.title()} districts)"))
+        except FileNotFoundError:
+            pass
+    table = table.set_index("season")
+    for series, source in extra:                 # later entries take priority
+        series = series.sort_index()
+        index = price_index(series.reset_index(drop=True))
+        index.index = series.index
+        table = table.reindex(table.index.union(series.index))
+        table.loc[series.index, "price"] = series
+        table.loc[series.index, "source"] = source
+        table.loc[series.index, "price_index"] = index
+    table = table.dropna(subset=["price"]).rename_axis("season").reset_index()
+    table["price_index"] = table["price_index"].round(4)
+    name = "wheat_prices.csv" if region is None else f"wheat_prices_{region.lower()}.csv"
+    return _write(table[["season", "price", "source", "price_index", "msp"]], processed, name, save)

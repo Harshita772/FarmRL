@@ -17,7 +17,8 @@ import requests
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
-from farmrl.data_loader import RAW, SITES  # noqa: E402
+from farmrl.data_loader import DISTRICT_WEATHER, RAW, SITES  # noqa: E402
+from farmrl.viz.maps import GEO_DIR, GEO_FILE, GEO_META  # noqa: E402
 
 UA = {"User-Agent": "Mozilla/5.0 (FarmRL coursework data download)"}
 POWER_URL = "https://power.larc.nasa.gov/api/temporal/daily/point"
@@ -29,6 +30,7 @@ RBI_VIEW = "https://www.rbi.org.in/Scripts/PublicationsView.aspx?id={}"
 RBI_MSP_2014_ID = 15815     # 2014 edition of the table: crop years 1981-82 .. 2013-14
 RBI_MSP_LATEST_ID = 23848   # fallback if the listing page cannot be parsed (2026 edition)
 CACP_RABI_URL = "https://cacp.da.gov.in/Home/latestRabiReports"
+GEOBOUNDARIES_API = "https://www.geoboundaries.org/api/current/gbOpen/IND/ADM2/"
 DATAGOV_API = "https://api.data.gov.in/resource/{}"
 # Agmarknet "Variety-wise Daily Market Prices Data of Commodity" on data.gov.in. The API
 # refused connections from the network this was written on, so the id is NOT verified;
@@ -72,6 +74,70 @@ def weather(start=1985, end=2024, force=False):
                           f"  in a browser and save the CSV as data/raw/{out.name}")
 
 
+def _power(lat, lon, start, end, out, tries=4):
+    """Fetch one POWER daily point file; returns None on success, else the error text."""
+    import time
+    q = dict(parameters=POWER_PARAMS, community="AG", latitude=lat, longitude=lon,
+             start=f"{start}0101", end=f"{end}1231", format="CSV")
+    err = None
+    for attempt in range(tries):
+        try:
+            r = requests.get(POWER_URL, params=q, timeout=300)
+            r.raise_for_status()
+            if "-END HEADER-" not in r.text:
+                raise ValueError("unexpected response (no POWER header)")
+            out.write_bytes(r.content)
+            return None
+        except Exception as e:      # network errors, HTTP 429/5xx, malformed payloads
+            err = str(e)
+            time.sleep(3 * (attempt + 1))
+    return err
+
+
+def district_weather(start=2007, end=2018, workers=4, force=False):
+    """NASA POWER daily weather at the centroid of every district in the yield panel.
+
+    Centroids come from the boundary file in data/geo (farmrl.districts); one file per
+    district is cached in data/raw/weather_districts/<dist_code>.csv and never fetched
+    twice, so an interrupted download resumes where it stopped. The years only need to
+    cover the ICRISAT panel (default 2007-2018), not the 40 years used by the environment.
+    """
+    from concurrent.futures import ThreadPoolExecutor
+    from farmrl.districts import load_district_sites
+    try:
+        sites = load_district_sites()
+    except Exception as e:      # no ICRISAT files or no boundary file yet
+        _manual("district_weather", f"  cannot list the panel districts: {e}\n"
+                                    "  run the icrisat and geo steps first")
+        return
+    folder = RAW / DISTRICT_WEATHER
+    folder.mkdir(parents=True, exist_ok=True)
+    placed = sites[sites["matched"]]
+    todo = [r for r in placed.itertuples() if force or not (folder / f"{r.dist_code}.csv").exists()]
+    print(f"[district_weather] {len(placed)} districts placed on the map "
+          f"({len(sites) - len(placed)} could not be), {len(todo)} to download")
+
+    def fetch(r):
+        return r, _power(r.lat, r.lon, start, end, folder / f"{r.dist_code}.csv")
+
+    failed = []
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        for i, (r, err) in enumerate(pool.map(fetch, todo), start=1):
+            if err:
+                failed.append(f"{r.district} ({r.state}): {err}")
+            if i % 25 == 0 or i == len(todo):
+                print(f"[district_weather] {i}/{len(todo)} done", flush=True)
+    have = len(list(folder.glob("*.csv")))
+    STATUS["district_weather"] = f"{have}/{len(placed)} district files in {folder.relative_to(ROOT)}"
+    unplaced = sites[~sites["matched"]]
+    if len(unplaced):
+        print("[district_weather] no boundary match (add an alias in farmrl/districts.py): "
+              + ", ".join(f"{r.district} ({r.state})" for r in unplaced.itertuples()))
+    if failed:
+        _manual("district_weather:failed", "  " + "\n  ".join(failed[:20])
+                + "\n  re-run `python scripts/download_data.py district_weather` to retry these")
+
+
 # ------------------------------------------------------------------------------ kaggle
 def kaggle():
     out = RAW / "yield_df.csv"
@@ -108,20 +174,22 @@ def kaggle():
 # ----------------------------------------------------------------------------- icrisat
 def icrisat():
     """The DLD sits behind a (free) registration, so this only checks what is on disk."""
+    import pandas as pd
     crops, fert = RAW / "icrisat_crops.csv", RAW / "icrisat_fertiliser.csv"
     have = [p.name for p in sorted(RAW.glob("icrisat_*.csv"))]
     if crops.exists() and fert.exists():
-        STATUS["icrisat"] = "present (manual download): " + ", ".join(have)
+        states = sorted(pd.read_csv(crops, usecols=["State Name"])["State Name"].unique())
+        STATUS["icrisat"] = (f"present (manual download): {', '.join(have)}; "
+                             f"{len(states)} states incl. {', '.join(states[:4])}...")
     want = """  1. Register (free) and sign in at http://data.icrisat.org/dld/
-  2. Open "District Level Data" -> Apportioned. Pick State = Punjab (all districts),
-     the longest year range offered, and export one CSV per category:
+  2. Open "District Level Data" -> Apportioned. Pick all states (or at least the wheat
+     states), the longest year range offered, and export one CSV per category:
         Crops: Area, Production & Yield          -> data/raw/icrisat_crops.csv
         Fertiliser Consumption (N, P, K)         -> data/raw/icrisat_fertiliser.csv
         Irrigation: Crop-wise Irrigated Area     -> data/raw/icrisat_irrigation.csv
         Rainfall: Monthly / Annual               -> data/raw/icrisat_rainfall.csv
         Prices: Farm Harvest Prices              -> data/raw/icrisat_prices.csv
-     If a file with that name already exists, append the Punjab rows to it (same header)
-     or replace it; the loader keeps every state it finds and reports which ones.
+     Replace existing files of the same name; the loader keeps every state it finds.
   3. Re-run:  conda run -n TogAI python scripts/prepare_data.py"""
     missing = [n for n in ("icrisat_crops.csv", "icrisat_fertiliser.csv", "icrisat_irrigation.csv",
                            "icrisat_rainfall.csv", "icrisat_prices.csv") if not (RAW / n).exists()]
@@ -252,8 +320,38 @@ def prices():
   Until then the pipeline uses the wheat MSP series (RBI) as the price series.""")
 
 
+# ------------------------------------------------------------------------------- geo
+def geo(force=False):
+    """District boundaries (geoBoundaries gbOpen, India ADM2, simplified) for the map."""
+    import json
+    if GEO_FILE.exists() and not force:
+        STATUS["geo"] = f"already present -> {GEO_FILE.relative_to(ROOT)}"
+        return
+    GEO_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        meta = requests.get(GEOBOUNDARIES_API, headers=UA, timeout=90).json()
+        url = meta.get("simplifiedGeometryGeoJSON") or meta["gjDownloadURL"]
+        r = requests.get(url, headers=UA, timeout=600)
+        r.raise_for_status()
+        if "FeatureCollection" not in r.text[:2000]:
+            raise ValueError("download is not a GeoJSON FeatureCollection")
+        keep = ["boundaryID", "boundaryName", "boundaryType", "boundaryYearRepresented",
+                "boundarySource", "boundaryLicense", "licenseSource", "boundarySourceURL",
+                "sourceDataUpdateDate", "buildDate"]
+        GEO_META.write_text(json.dumps({**{k: meta.get(k) for k in keep}, "downloaded_from": url}, indent=2))
+        _save("geo", GEO_FILE, r.content)
+        print(f"[geo] licence: {meta.get('boundaryLicense')} (source: {meta.get('boundarySource')})")
+    except Exception as e:
+        _manual("geo", f"""  {e}
+  Any district-level GeoJSON of India works (one feature per district, with a name
+  property such as shapeName / DISTRICT / dtname / NAME_2). Sources:
+    - geoBoundaries: https://www.geoboundaries.org -> India -> ADM2 -> GeoJSON (simplified)
+    - datameet: https://github.com/datameet/maps (Districts)
+  Save it as {GEO_FILE.relative_to(ROOT)}""")
+
+
 STEPS = {"weather": weather, "kaggle": kaggle, "icrisat": icrisat, "msp": msp,
-         "costs": costs, "prices": prices}
+         "costs": costs, "prices": prices, "geo": geo, "district_weather": district_weather}
 
 if __name__ == "__main__":
     RAW.mkdir(parents=True, exist_ok=True)
