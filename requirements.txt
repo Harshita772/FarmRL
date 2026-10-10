@@ -14,3 +14,10 @@ jupyter
 ipykernel
 kaggle
 openpyxl
+# visualisation layer
+pyarrow
+pillow
+plotly
+streamlit
+rapidfuzz
+tensorboard

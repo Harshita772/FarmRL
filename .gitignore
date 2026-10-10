@@ -228,3 +228,8 @@ results/models/*
 report/*.aux
 report/*.log
 report/*.out
+
+# full district boundary download (a small subset is committed instead)
+data/geo/india_districts.geojson
+# per-run bulky or regenerable outputs
+results/runs/*/tensorboard/
