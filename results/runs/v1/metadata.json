@@ -1,0 +1,308 @@
+{
+  "run_name": "v1",
+  "created": "2026-10-10T17:09:40",
+  "git_hash": "7f8dadbfd011864be8d1a6ac0dc9fcb47ba968db",
+  "quick": false,
+  "timesteps": 200000,
+  "train_seeds": [
+    42,
+    43,
+    44
+  ],
+  "loaded_model": null,
+  "rollout_seeds": 30,
+  "policies": [
+    "ppo",
+    "no_input",
+    "random",
+    "recommended",
+    "threshold",
+    "ppo_untrained"
+  ],
+  "aux_policies": [
+    "ppo_untrained"
+  ],
+  "weather_site": "ludhiana",
+  "train_seasons": [
+    1985,
+    1986,
+    1987,
+    1988,
+    1989,
+    1990,
+    1991,
+    1992,
+    1993,
+    1994,
+    1995,
+    1996,
+    1997,
+    1998,
+    1999,
+    2000,
+    2001,
+    2002,
+    2003,
+    2004,
+    2005,
+    2006,
+    2007,
+    2008,
+    2009,
+    2010,
+    2011,
+    2012,
+    2013,
+    2014,
+    2015,
+    2016
+  ],
+  "test_seasons": [
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023
+  ],
+  "yield_model": {
+    "y_max": 46.762541906043545,
+    "n_coef": 0.0258321356180382,
+    "w_opt": 332.12702023974845,
+    "w_excess": 0.042534111540836375,
+    "pest_loss": 0.35,
+    "soil_n": 30.0,
+    "ky": 1.15,
+    "y_scale": 1.1250171634037651
+  },
+  "yield_fit": {
+    "n_obs": 70,
+    "r2": 0.2366498564679803,
+    "rmse": 3.65980063470728,
+    "assumed_irrigation_mm": 300.0,
+    "n_range_kg_ha": [
+      88.71,
+      264.97
+    ],
+    "water_range_mm": [
+      317.96,
+      573.4200000000001
+    ],
+    "mean_observed_yield": 44.98232571428571,
+    "identified": {
+      "y_max": true,
+      "n_coef": true,
+      "w_opt": true,
+      "w_excess": true,
+      "pest_loss": false
+    },
+    "std_err": {
+      "y_max": 1.039111666585371,
+      "n_coef": 0.0068519356370912105,
+      "w_opt": 56.594597582114005,
+      "w_excess": 0.025997097144405054
+    },
+    "first_pass": {
+      "y_max": {
+        "estimate": 46.762541906043545,
+        "std_err": 1.039111666585371
+      },
+      "n_coef": {
+        "estimate": 0.0258321356180382,
+        "std_err": 0.0068519356370912105
+      },
+      "w_opt": {
+        "estimate": 332.12702023974845,
+        "std_err": 56.594597582114005
+      },
+      "w_excess": {
+        "estimate": 0.042534111540836375,
+        "std_err": 0.025997097144405054
+      }
+    }
+  },
+  "data_files": [
+    {
+      "path": "data/raw/cacp_rabi_price_policy_latest.pdf",
+      "bytes": 64686909,
+      "modified": "2026-10-10T17:02:43"
+    },
+    {
+      "path": "data/raw/icrisat_crops.csv",
+      "bytes": 42237,
+      "modified": "2026-10-10T17:02:43"
+    },
+    {
+      "path": "data/raw/icrisat_fertiliser.csv",
+      "bytes": 12336,
+      "modified": "2026-10-10T17:02:43"
+    },
+    {
+      "path": "data/raw/rbi_msp_foodgrains_2014.html",
+      "bytes": 80495,
+      "modified": "2026-10-10T17:02:43"
+    },
+    {
+      "path": "data/raw/rbi_msp_foodgrains_latest.html",
+      "bytes": 74990,
+      "modified": "2026-10-10T17:02:43"
+    },
+    {
+      "path": "data/raw/weather_ambala.csv",
+      "bytes": 635924,
+      "modified": "2026-10-10T17:02:43"
+    },
+    {
+      "path": "data/raw/weather_gurgaon.csv",
+      "bytes": 634721,
+      "modified": "2026-10-10T17:02:43"
+    },
+    {
+      "path": "data/raw/weather_hisar.csv",
+      "bytes": 634385,
+      "modified": "2026-10-10T17:02:43"
+    },
+    {
+      "path": "data/raw/weather_jind.csv",
+      "bytes": 634514,
+      "modified": "2026-10-10T17:02:43"
+    },
+    {
+      "path": "data/raw/weather_karnal.csv",
+      "bytes": 634756,
+      "modified": "2026-10-10T17:02:43"
+    },
+    {
+      "path": "data/raw/weather_ludhiana.csv",
+      "bytes": 634684,
+      "modified": "2026-10-10T17:02:43"
+    },
+    {
+      "path": "data/raw/weather_narnaul.csv",
+      "bytes": 634528,
+      "modified": "2026-10-10T17:02:43"
+    },
+    {
+      "path": "data/raw/weather_rohtak.csv",
+      "bytes": 634714,
+      "modified": "2026-10-10T17:02:43"
+    },
+    {
+      "path": "data/processed/cost_of_cultivation_wheat_punjab.csv",
+      "bytes": 2871,
+      "modified": "2026-10-10T17:21:31"
+    },
+    {
+      "path": "data/processed/icrisat_wheat.csv",
+      "bytes": 6177,
+      "modified": "2026-10-10T17:21:28"
+    },
+    {
+      "path": "data/processed/weather_daily_ambala.csv",
+      "bytes": 932178,
+      "modified": "2026-10-10T17:21:29"
+    },
+    {
+      "path": "data/processed/weather_daily_gurgaon.csv",
+      "bytes": 930941,
+      "modified": "2026-10-10T17:21:28"
+    },
+    {
+      "path": "data/processed/weather_daily_hisar.csv",
+      "bytes": 930652,
+      "modified": "2026-10-10T17:21:28"
+    },
+    {
+      "path": "data/processed/weather_daily_jind.csv",
+      "bytes": 930986,
+      "modified": "2026-10-10T17:21:28"
+    },
+    {
+      "path": "data/processed/weather_daily_karnal.csv",
+      "bytes": 931118,
+      "modified": "2026-10-10T17:21:30"
+    },
+    {
+      "path": "data/processed/weather_daily_ludhiana.csv",
+      "bytes": 931054,
+      "modified": "2026-10-10T17:21:27"
+    },
+    {
+      "path": "data/processed/weather_daily_narnaul.csv",
+      "bytes": 931027,
+      "modified": "2026-10-10T17:21:29"
+    },
+    {
+      "path": "data/processed/weather_daily_rohtak.csv",
+      "bytes": 930959,
+      "modified": "2026-10-10T17:21:31"
+    },
+    {
+      "path": "data/processed/weather_fortnightly_ambala.csv",
+      "bytes": 30680,
+      "modified": "2026-10-10T17:21:29"
+    },
+    {
+      "path": "data/processed/weather_fortnightly_gurgaon.csv",
+      "bytes": 30568,
+      "modified": "2026-10-10T17:21:28"
+    },
+    {
+      "path": "data/processed/weather_fortnightly_hisar.csv",
+      "bytes": 30542,
+      "modified": "2026-10-10T17:21:28"
+    },
+    {
+      "path": "data/processed/weather_fortnightly_jind.csv",
+      "bytes": 30573,
+      "modified": "2026-10-10T17:21:28"
+    },
+    {
+      "path": "data/processed/weather_fortnightly_karnal.csv",
+      "bytes": 30592,
+      "modified": "2026-10-10T17:21:30"
+    },
+    {
+      "path": "data/processed/weather_fortnightly_ludhiana.csv",
+      "bytes": 30676,
+      "modified": "2026-10-10T17:21:27"
+    },
+    {
+      "path": "data/processed/weather_fortnightly_narnaul.csv",
+      "bytes": 30556,
+      "modified": "2026-10-10T17:21:29"
+    },
+    {
+      "path": "data/processed/weather_fortnightly_rohtak.csv",
+      "bytes": 30598,
+      "modified": "2026-10-10T17:21:31"
+    },
+    {
+      "path": "data/processed/wheat_msp.csv",
+      "bytes": 941,
+      "modified": "2026-10-10T17:21:27"
+    },
+    {
+      "path": "data/processed/wheat_prices.csv",
+      "bytes": 2050,
+      "modified": "2026-10-10T17:21:27"
+    },
+    {
+      "path": "data/processed/yield_fit_table.csv",
+      "bytes": 8580,
+      "modified": "2026-10-10T17:21:31"
+    },
+    {
+      "path": "data/reference/cacp_wheat_cost_punjab.csv",
+      "bytes": 1397,
+      "modified": "2026-10-10T16:56:08"
+    }
+  ],
+  "versions": {
+    "python": "3.12.7",
+    "torch": "2.5.0+cpu",
+    "numpy": "1.26.4",
+    "pandas": "3.0.5"
+  }
+}
