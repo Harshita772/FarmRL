@@ -13,6 +13,7 @@ What is calibrated on data and what is assumed:
   * soil water bucket, crop coefficients, N timing efficiency, pest growth, penalties
                                                 -- textbook-style assumptions (cfg["dynamics"])
 """
+import copy
 from pathlib import Path
 
 import numpy as np
@@ -71,12 +72,17 @@ class FarmEnv(gym.Env):
             ROOT / cfg.get("fitted_params", "configs/fitted_params.yaml"))
 
         weather = self._load_weather(cfg) if weather is None else weather
-        prices = self._load_prices() if prices is None else prices
+        prices = self._load_prices(cfg) if prices is None else prices
         if weather.groupby("season").size().ne(self.T).any():
             raise ValueError(f"weather must have exactly {self.T} steps per season")
         self.weather = {int(s): g.sort_values("step")[["rain_mm", "et0_mm", "rh"]].to_numpy(float)
                         for s, g in weather.groupby("season")}
+        self.dates = ({} if "start_date" not in weather else
+                      {int(s): pd.to_datetime(g.sort_values("step")["start_date"]).tolist()
+                       for s, g in weather.groupby("season")})
         self.rh_mean = float(weather["rh"].mean())
+        self.heat = ({} if "heat_days" not in weather else
+                     {int(s): float(v) for s, v in weather.groupby("season")["heat_days"].sum().items()})
         self.price_index = ({} if prices is None else
                             dict(zip(prices["season"].astype(int), prices["price_index"].astype(float))))
 
@@ -102,14 +108,25 @@ class FarmEnv(gym.Env):
         return dl.load_seasons(site, steps=cfg["steps_per_season"])   # needs data/raw
 
     @staticmethod
-    def _load_prices():
-        path = dl.PROCESSED / "wheat_prices.csv"
-        if path.exists():
-            return pd.read_csv(path)
+    def _load_prices(cfg):
+        """The region's price table when it has been built, else the national one."""
+        region = cfg.get("region")
+        names = ([f"wheat_prices_{region.lower()}.csv"] if region else []) + ["wheat_prices.csv"]
+        for name in names:
+            if (dl.PROCESSED / name).exists():
+                return pd.read_csv(dl.PROCESSED / name)
         try:
-            return dl.load_prices()
+            return dl.load_prices(region=region)
         except FileNotFoundError:
             return None           # no price series on disk: every season pays base_price
+
+    def step_dates(self, season=None):
+        """Start date of every fortnight of ``season`` (default: the current one)."""
+        season = self.season if season is None else int(season)
+        if season in self.dates:
+            return self.dates[season]
+        start = pd.Timestamp(season, *dl.SEASON_START)
+        return [start + pd.Timedelta(days=15 * t) for t in range(self.T)]
 
     def _obs(self):
         last_rain, last_et0 = (0.0, 0.0) if self.t == 0 else self._wx[self.t - 1, :2]
@@ -183,7 +200,8 @@ class FarmEnv(gym.Env):
         info = {}
         if terminated:
             et_ratio = self.cum_eta / self.cum_etc
-            y = self.ym.final_yield(self.cum_n_eff, self.cum_water, self.pest_damage, et_ratio)
+            heat_days = self.heat.get(self.season, 0.0)
+            y = self.ym.final_yield(self.cum_n_eff, self.cum_water, self.pest_damage, et_ratio, heat_days)
             revenue = y * self.price
             fixed = self.costs.get("fixed_per_ha", 0.0)
             reward += revenue - fixed
@@ -192,8 +210,23 @@ class FarmEnv(gym.Env):
                     "input_cost": self.cum_cost, "penalty": self.cum_penalty,
                     "n_total": self.cum_n, "irrigation_total": self.cum_irrigation,
                     "pesticide_total": self.cum_pesticide, "rain_total": self.cum_rain,
-                    "et_ratio": et_ratio, "pest_damage": self.pest_damage}
+                    "et_ratio": et_ratio, "pest_damage": self.pest_damage, "heat_days": heat_days}
         return self._obs(), reward / self.reward_scale, terminated, False, info
+
+
+def scale_config(cfg, price=1.0, nitrogen_cost=1.0, irrigation_cost=1.0, pesticide_cost=1.0,
+                 penalty=1.0, weather_site=None):
+    """Copy of an env config with prices, unit costs and penalty weights multiplied, for
+    what-if runs (sensitivity analysis, the dashboard's sliders, other districts)."""
+    out = copy.deepcopy(cfg)
+    out["base_price"] = cfg["base_price"] * price
+    for key, k in (("nitrogen_per_kg", nitrogen_cost), ("irrigation_per_mm", irrigation_cost),
+                   ("pesticide_per_level", pesticide_cost)):
+        out["costs"][key] = cfg["costs"][key] * k
+    out["penalties"] = {name: v * penalty for name, v in cfg["penalties"].items()}
+    if weather_site is not None:
+        out["weather_site"] = weather_site
+    return out
 
 
 def calibrate_yield_scale(cfg, model, target_yield, policy, replicates=20, seed0=0):
@@ -215,3 +248,31 @@ def calibrate_yield_scale(cfg, model, target_yield, policy, replicates=20, seed0
             yields.append(info["yield"])
     model.y_scale = float(target_yield / np.mean(yields))
     return model.y_scale
+
+
+def calibrate_ky(cfg, model, policy, bounds=(0.2, 2.5)):
+    """Set the water-deficit response ``ky`` so that going without irrigation costs, on
+    average over the train seasons, what the panel says a rainfed crop loses.
+
+    The panel fit gives the loss of an unirrigated crop as a function of season rain
+    (``model.rainfed_loss``); the simulator expresses deficit through the share of crop
+    water demand met. Playing ``policy`` with irrigation switched off links the two:
+    ky = mean fitted loss / mean simulated (1 - ET_a/ET_c). Returns the new ky, or leaves
+    the literature value in place when the panel did not identify a rainfed loss."""
+    if model.k_dry <= 0:
+        return model.ky
+    env = FarmEnv(cfg, split="train", yield_model=model)
+    deficit, loss = [], []
+    for season in env.seasons:
+        obs, _ = env.reset(seed=season, options={"season": season})
+        done = False
+        while not done:
+            action = np.asarray(policy(obs, env)).copy()
+            action[1] = 0
+            obs, _, done, _, info = env.step(action)
+        deficit.append(1 - info["et_ratio"])
+        loss.append(float(model.rainfed_loss(info["rain_total"])))
+    if np.mean(deficit) <= 0:
+        return model.ky
+    model.ky = float(np.clip(np.mean(loss) / np.mean(deficit), *bounds))
+    return model.ky

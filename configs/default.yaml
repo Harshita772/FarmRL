@@ -1,6 +1,6 @@
 env:
   crop: wheat
-  region: punjab
+  region: punjab                # state used for the yield plateau, harvest prices and calibration
   weather_site: ludhiana        # key of farmrl.data_loader.SITES
   steps_per_season: 12          # fortnights from 1 Nov (sowing) to end of April
   train_end: 2016               # sowing years <= this train the agent; later years are held out
@@ -43,7 +43,9 @@ env:
   seed: 42
 
 yield_fit:
-  assumed_irrigation_mm: 300.0  # ICRISAT has no irrigation depth; every record gets this
+  assumed_irrigation_mm: 300.0  # irrigation depth of a fully irrigated crop (ICRISAT has area, not depth)
+  min_area_kha: 10.0            # district-years with less wheat area are left out of the panel
+  holdout_from: 2015            # panel years from here on are held out to score the fit
 
 train:
   total_timesteps: 200000
@@ -57,6 +59,10 @@ train:
   hidden: 64
   ent_coef: 0.01
   vf_coef: 0.5
+
+compute:
+  torch_threads: 1              # threads per process; the networks are tiny, more threads only add overhead
+  parallel_seeds: 4             # PPO training seeds run side by side; 6 max when plugged in, 2-3 on battery
 
 eval:
   seeds_per_season: 30          # pest growth is random, so each held-out season is replayed
