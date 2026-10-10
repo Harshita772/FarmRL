@@ -1,0 +1,62 @@
+env:
+  crop: wheat
+  region: punjab
+  weather_site: ludhiana        # key of farmrl.data_loader.SITES
+  steps_per_season: 12          # fortnights from 1 Nov (sowing) to end of April
+  train_end: 2016               # sowing years <= this train the agent; later years are held out
+  nitrogen_levels: [0, 20, 40]  # kg N/ha per step
+  irrigation_levels: [0, 37.5, 75]  # mm per step (none / half / one full irrigation)
+  pesticide_levels: [0, 1, 2]   # none / low / high
+  fitted_params: configs/fitted_params.yaml   # written by scripts/prepare_data.py
+
+  # ---- costs (INR) ---------------------------------------------------------------
+  # Source: CACP, "Price Policy for Rabi Crops: Marketing Season 2027-28" (July 2026),
+  # Annex Table 5.6(a) "Wheat: Break-up of Cost of Cultivation", Punjab, 2024-25, p. 189
+  # (https://cacp.da.gov.in/Home/latestRabiReports). Full table transcribed in
+  # data/reference/cacp_wheat_cost_punjab.csv. Per-hectare figures for 2024-25:
+  #   operational cost 34285 | fertilisers 6270 | insecticides 2366 | irrigation charges 857
+  #   human labour 5483 | machine labour 14799 | seed 3330 | yield 53.0 q/ha
+  # The agent chooses N, water and pesticide, so those three lines become unit costs and
+  # the rest of the operational cost is charged as a fixed amount per season.
+  costs:
+    # NOT from CACP (the report gives no unit price): urea MRP of Rs 266.50 per 45 kg bag
+    # (Dept. of Fertilizers, neem-coated, incl. taxes) / 0.46 kg N per kg urea. Verify.
+    nitrogen_per_kg: 12.9
+    # CACP irrigation charges 857 Rs/ha spread over an ASSUMED 300 mm applied per season
+    # (4 irrigations of 75 mm). Low because farm electricity is free in Punjab.
+    irrigation_per_mm: 2.86
+    # CACP insecticides 2366 Rs/ha spread over an ASSUMED 2 low-dose applications.
+    pesticide_per_level: 1183.0
+    # CACP operational cost 34285 - insecticides 2366 - irrigation 857 - nitrogen at an
+    # ASSUMED 125 kg N/ha (125 x 12.9 = 1612): labour, machinery, seed, P and K, interest.
+    fixed_per_ha: 29450.0
+  # Wheat MSP for crop year 2024-25 (RMS 2025-26), the year of the costs above.
+  # Source: RBI Handbook of Statistics on Indian Economy, Table 23 (31 Jul 2026).
+  base_price: 2425.0            # INR/quintal; each season pays base_price x its price index
+
+  # ---- environmental penalties (design choices, not data) -------------------------
+  penalties:
+    excess_nitrogen: 5.0        # INR per kg of soil mineral N above dynamics.soil_n_safe, per step
+    pesticide_use: 100.0        # INR per pesticide level applied
+    irrigation_per_mm: 5.0      # INR per mm pumped (groundwater depletion; power is unpriced)
+  reward_scale: 10000.0         # reward = INR / reward_scale
+  seed: 42
+
+yield_fit:
+  assumed_irrigation_mm: 300.0  # ICRISAT has no irrigation depth; every record gets this
+
+train:
+  total_timesteps: 200000
+  lr: 3.0e-4
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_eps: 0.2
+  n_steps: 2048
+  batch_size: 64
+  epochs: 10
+  hidden: 64
+  ent_coef: 0.01
+  vf_coef: 0.5
+
+eval:
+  seeds_per_season: 30          # pest growth is random, so each held-out season is replayed
