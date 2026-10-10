@@ -1,0 +1,46 @@
+params:
+  y_max: 46.762541906043545
+  n_coef: 0.0258321356180382
+  w_opt: 332.12702023974845
+  w_excess: 0.042534111540836375
+  pest_loss: 0.35
+  soil_n: 30.0
+  ky: 1.15
+  y_scale: 1.1250171634037651
+source: ICRISAT district-level data (Haryana, 2008-2017) + NASA POWER season rainfall
+fit:
+  n_obs: 70
+  r2: 0.2366498564679803
+  rmse: 3.65980063470728
+  assumed_irrigation_mm: 300.0
+  n_range_kg_ha:
+  - 88.71
+  - 264.97
+  water_range_mm:
+  - 317.96
+  - 573.4200000000001
+  mean_observed_yield: 44.98232571428571
+  identified:
+    y_max: true
+    n_coef: true
+    w_opt: true
+    w_excess: true
+    pest_loss: false
+  std_err:
+    y_max: 1.039111666585371
+    n_coef: 0.0068519356370912105
+    w_opt: 56.594597582114005
+    w_excess: 0.025997097144405054
+  first_pass:
+    y_max:
+      estimate: 46.762541906043545
+      std_err: 1.039111666585371
+    n_coef:
+      estimate: 0.0258321356180382
+      std_err: 0.0068519356370912105
+    w_opt:
+      estimate: 332.12702023974845
+      std_err: 56.594597582114005
+    w_excess:
+      estimate: 0.042534111540836375
+      std_err: 0.025997097144405054
