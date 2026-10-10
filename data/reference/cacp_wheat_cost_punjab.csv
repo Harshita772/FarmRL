@@ -1,0 +1,28 @@
+# Wheat, Punjab: break-up of cost of cultivation (Rs per hectare); yield in quintal/ha.
+# Source: Commission for Agricultural Costs & Prices (CACP), "Price Policy for Rabi Crops:
+# Marketing Season 2027-28" (July 2026), Annex Table 5.6(a), report page 189
+# ("CACP calculations using CS data"). https://cacp.da.gov.in/Home/latestRabiReports
+# Transcribed by hand from the scanned PDF (data/raw/cacp_rabi_price_policy_latest.pdf).
+item,group,2022-23,2023-24,2024-25
+operational_cost,total,32525,33411,34285
+human_labour_casual,operational,1412,1481,1535
+human_labour_attached,operational,670,680,683
+human_labour_family,operational,3061,3188,3265
+bullock_labour,operational,8,7,7
+machine_labour_hired,operational,9478,9737,10083
+machine_labour_owned,operational,4612,4678,4716
+seed,operational,3144,3189,3330
+fertilisers,operational,5783,6019,6270
+manure,operational,20,20,20
+insecticides,operational,2414,2451,2366
+irrigation_charges,operational,803,824,857
+crop_insurance,operational,0,0,0
+interest_on_working_capital,operational,893,916,940
+miscellaneous,operational,227,222,212
+fixed_cost,total,42930,40612,43697
+rental_value_of_owned_land,fixed,30710,28311,30945
+rent_paid_for_leased_in_land,fixed,5908,6135,6342
+land_revenue_cesses_taxes,fixed,0,0,0
+depreciation,fixed,586,610,638
+interest_on_fixed_capital,fixed,5726,5556,5772
+yield_q_per_ha,yield,48.0,51.8,53.0
