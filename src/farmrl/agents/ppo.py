@@ -73,30 +73,54 @@ class PPO:
         old_logp = torch.stack(buf["logp"])
         adv = (adv - adv.mean()) / (adv.std() + 1e-8)
         n = len(obs)
+        stats = {"policy_loss": [], "value_loss": [], "entropy": [], "kl": []}
         for _ in range(self.c["epochs"]):
             for idx in torch.randperm(n).split(self.c["batch_size"]):
                 logp, ent, v = self.net.evaluate(obs[idx], act[idx])
                 ratio = (logp - old_logp[idx]).exp()
                 s1 = ratio * adv[idx]
                 s2 = ratio.clamp(1 - self.c["clip_eps"], 1 + self.c["clip_eps"]) * adv[idx]
-                loss = (-torch.min(s1, s2).mean()
-                        + self.c.get("vf_coef", 0.5) * (ret[idx] - v).pow(2).mean()
+                pi_loss, v_loss = -torch.min(s1, s2).mean(), (ret[idx] - v).pow(2).mean()
+                loss = (pi_loss + self.c.get("vf_coef", 0.5) * v_loss
                         - self.c.get("ent_coef", 0.01) * ent.mean())
                 self.opt.zero_grad(); loss.backward()
                 nn.utils.clip_grad_norm_(self.net.parameters(), 0.5)
                 self.opt.step()
+                for k, x in zip(stats, [pi_loss, v_loss, ent.mean(), (old_logp[idx] - logp).mean()]):
+                    stats[k].append(x.item())
+        return {k: float(np.mean(v)) for k, v in stats.items()}
 
-    def learn(self, total_timesteps, log_fn=None):
+    def learn(self, total_timesteps, log_fn=None, tensorboard_dir=None):
+        """Train and return the mean episode return per iteration. ``self.log`` keeps one
+        dict per iteration (return, policy loss, value loss, entropy, approximate KL);
+        ``tensorboard_dir`` additionally writes those scalars as TensorBoard events."""
+        writer = None
+        if tensorboard_dir is not None:
+            from torch.utils.tensorboard import SummaryWriter
+            writer = SummaryWriter(str(tensorboard_dir))
         obs, _ = self.env.reset()
-        history = []
+        history, self.log = [], []
         for it in range(total_timesteps // self.c["n_steps"]):
             buf, obs, last_v, eps = self.collect(obs)
             adv, ret = self.gae(buf, last_v)
-            self.update(buf, adv, ret)
+            stats = self.update(buf, adv, ret)
             if eps:
                 history.append(float(np.mean(eps)))
+                self.log.append({"iteration": it, "timesteps": (it + 1) * self.c["n_steps"],
+                                 "mean_return": history[-1], **stats})
+                if writer:
+                    for k, v in self.log[-1].items():
+                        writer.add_scalar(f"train/{k}", v, self.log[-1]["timesteps"])
                 if log_fn: log_fn(it, history[-1])
+        if writer:
+            writer.close()
         return history
+
+    def action_probs(self, obs):
+        """Probability of each level of each input (list of arrays, one per action head)."""
+        with torch.no_grad():
+            ds, _ = self.net.dist(torch.as_tensor(obs, dtype=torch.float32))
+        return [d.probs.numpy() for d in ds]
 
     def predict(self, obs):
         with torch.no_grad():
