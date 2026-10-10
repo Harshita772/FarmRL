@@ -1,0 +1,47 @@
+{
+  "no_input": {
+    "profit": 3208.087,
+    "profit_std": 11915.245,
+    "reward": 3208.087,
+    "yield": 13.446,
+    "n_total": 0.0,
+    "irrigation_total": 0.0,
+    "pesticide_total": 0.0
+  },
+  "random": {
+    "profit": 31852.589,
+    "profit_std": 32384.323,
+    "reward": 28432.526,
+    "yield": 32.89,
+    "n_total": 244.476,
+    "irrigation_total": 436.786,
+    "pesticide_total": 11.79
+  },
+  "recommended": {
+    "profit": 69518.005,
+    "profit_std": 8373.139,
+    "reward": 67918.005,
+    "yield": 42.301,
+    "n_total": 120.0,
+    "irrigation_total": 300.0,
+    "pesticide_total": 1.0
+  },
+  "threshold": {
+    "profit": 74399.875,
+    "profit_std": 3485.524,
+    "reward": 72510.351,
+    "yield": 47.311,
+    "n_total": 140.0,
+    "irrigation_total": 235.714,
+    "pesticide_total": 7.11
+  },
+  "ppo": {
+    "profit": 84456.663,
+    "profit_std": 3521.248,
+    "reward": 82728.087,
+    "yield": 49.976,
+    "n_total": 173.429,
+    "irrigation_total": 225.0,
+    "pesticide_total": 3.733
+  }
+}
