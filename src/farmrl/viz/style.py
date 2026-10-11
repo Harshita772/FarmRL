@@ -12,14 +12,20 @@ INK, INK_2, MUTED, GRID, AXIS = "#0b0b0b", "#52514e", "#898781", "#e1e0d9", "#c3
 SURFACE = "#ffffff"
 
 _FIXED = {"ppo": PALETTE[0], "recommended": PALETTE[1], "threshold": PALETTE[2],
-          "random": PALETTE[3], "no_input": MUTED, "ppo_untrained": PALETTE[6]}
+          "random": PALETTE[3], "no_input": MUTED, "ppo_untrained": PALETTE[6],
+          "recommended_tuned": "#a8401a", "threshold_tuned": "#0e6e4c"}   # darker steps of the same hues
 LABELS = {"ppo": "PPO", "ppo_untrained": "PPO (untrained)", "no_input": "No inputs",
-          "recommended": "Recommended", "threshold": "Threshold rules", "random": "Random"}
+          "recommended": "Recommended", "threshold": "Threshold rules", "random": "Random",
+          "recommended_tuned": "Calendar (tuned)", "threshold_tuned": "Threshold (tuned)"}
 
 DRY, WET = PALETTE[1], PALETTE[0]            # season type: below / above median rain
-INPUT_COLORS = {"nitrogen_kg": PALETTE[5], "irrigation_mm": PALETTE[0], "pesticide_level": PALETTE[7]}
+INPUT_COLORS = {"nitrogen_kg": PALETTE[5], "irrigation_mm": PALETTE[0], "pesticide_level": PALETTE[7],
+                "store_months": PALETTE[3]}
 INPUT_LABELS = {"nitrogen_kg": "Nitrogen (kg N/ha)", "irrigation_mm": "Irrigation (mm)",
-                "pesticide_level": "Pesticide (dose)"}
+                "pesticide_level": "Pesticide (dose)", "store_months": "Storage (months)"}
+# the four decisions PPO's gain is split between (experiment.DECISIONS)
+DECISION_COLORS = {"nitrogen": PALETTE[5], "water": PALETTE[0], "pests": PALETTE[7], "sale": PALETTE[3]}
+DECISION_LABELS = {"nitrogen": "Nitrogen", "water": "Water", "pests": "Pests", "sale": "Sale timing"}
 SEQUENTIAL = "Blues"                          # magnitude: one hue, light to dark
 DIVERGING = ["#eb6834", "#f0efec", "#2a78d6"]  # loss - neutral grey - gain
 

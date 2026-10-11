@@ -42,13 +42,38 @@ def _need_agent(run):
 
 
 def _baseline(run, baseline=None):
-    """Comparison policy: the one asked for, else 'recommended', else the best baseline."""
+    """Comparison policy: the one asked for, else the run's reference rule (the tuned
+    baseline that did best in training; 'recommended' in older runs), else the best one."""
     others = [p for p in run.policies() if p != AGENT]
     if baseline in others:
         return baseline
     if not others:
         raise SkipFigure("run has no baseline policy")
-    return "recommended" if "recommended" in others else _order(_test_episodes(run)[lambda d: d["policy"] != AGENT])[0]
+    if run.reference_policy in others:
+        return run.reference_policy
+    return _order(_test_episodes(run)[lambda d: d["policy"] != AGENT])[0]
+
+
+def gain_under_scaling(run, baseline=None):
+    """PPO's profit gain over the reference rule, and random's profit as a share of PPO's,
+    for every case of the run's sensitivity table. Returns (table, baseline case row,
+    reference policy); the table has one row per factor and multiplier."""
+    s = run.sensitivity
+    if s is None or s.empty:
+        raise SkipFigure("no sensitivity.csv in the run")
+    ref = baseline if baseline in set(s["policy"]) else run.reference_policy
+    if AGENT not in set(s["policy"]) or ref not in set(s["policy"]):
+        raise SkipFigure("sensitivity table lacks the agent or the reference baseline")
+    wide = s.pivot_table(index=["factor", "multiplier"], columns="policy", values="profit")
+    out = pd.DataFrame({"gain": wide[AGENT] - wide[ref], "ppo": wide[AGENT], "reference": wide[ref]})
+    out["random_share"] = wide["random"] / wide[AGENT] if "random" in wide else np.nan
+    out = out.reset_index()
+    if "group" in s:
+        out = out.merge(s[["factor", "group"]].drop_duplicates(), on="factor")
+    else:
+        out["group"] = ""
+    base = out[out["factor"] == "baseline"].iloc[0]
+    return out[out["factor"] != "baseline"], base, ref
 
 
 def _season_rain(run):
@@ -370,6 +395,162 @@ def season_gain(run=None, min_share=0.5):
     return fig
 
 
+# ------------------------------------------------------------------------ j) robustness
+def seed_robustness(run=None):
+    """Held-out profit of every PPO training seed, with their mean +/- std, next to the
+    rule baselines and random."""
+    run = runs.get(run)
+    seeds = run.seed_summary
+    if seeds is None or seeds.empty:
+        raise SkipFigure("no seed_summary.csv in the run")
+    seeds = seeds[seeds["split"] == "test"].sort_values("train_seed")
+    means = _test_episodes(run).groupby("policy")["profit"].mean().drop(index=AGENT, errors="ignore")
+    means = means.sort_values(ascending=False)
+    colors = style.policy_colors([AGENT, *means.index])
+    mean, std = seeds["profit"].mean() / 1000, (seeds["profit"].std() if len(seeds) > 1 else 0.0) / 1000
+    fig, ax = plt.subplots(figsize=(style.COLUMN, 2.6))
+    x = np.arange(len(seeds))
+    ax.plot(x, seeds["profit"] / 1000, ls="none", marker="o", ms=5, color=colors[AGENT], mec="white", mew=0.8, zorder=3)
+    ax.set_xlim(-0.6, len(seeds) - 0.4)
+    ax.axhspan(mean - std, mean + std, color=colors[AGENT], alpha=0.15, lw=0)
+    ax.axhline(mean, color=colors[AGENT], lw=1)
+    for name, value in means.items():
+        if value < 0.5 * means.max():
+            continue                                    # far below the rest: keeps the scale readable
+        ax.axhline(value / 1000, color=colors[name], lw=1, ls="--")
+        ax.annotate(style.label(name), (len(seeds) - 0.45, value / 1000), xytext=(3, 0), textcoords="offset points",
+                    fontsize=6, color=colors[name], va="center", annotation_clip=False)
+    ax.set_xticks(x)
+    ax.set_xticklabels(seeds["train_seed"].astype(int))
+    lo = min(seeds["profit"].min(), means[means >= 0.5 * means.max()].min()) / 1000
+    ax.set_ylim(lo - 0.25 * (mean + std - lo + 1), None)
+    ax.set(xlabel="PPO training seed", ylabel="net profit, held-out seasons\n(thousand INR/ha)",
+           title=f"PPO over {len(seeds)} training seeds: {mean:.1f} ± {std:.1f}k INR/ha")
+    ax.grid(axis="x", visible=False)
+    return fig
+
+
+def gain_attribution(run=None):
+    """PPO's held-out profit gain over each rule baseline, split between the decisions
+    (Shapley values, mean +/- std over training seeds)."""
+    run = runs.get(run)
+    a = run.attribution
+    if a is None or a.empty:
+        raise SkipFigure("no attribution.csv in the run")
+    bases = list(dict.fromkeys(a["baseline_policy"]))
+    rows = (len(bases) + 1) // 2
+    fig, axes = plt.subplots(rows, min(2, len(bases)), figsize=(style.FULL, 2.3 * rows), sharey=True, squeeze=False,
+                             gridspec_kw={"wspace": 0.08, "hspace": 0.45})
+    for ax in axes.flat[len(bases):]:
+        ax.set_visible(False)
+    for ax, base in zip(axes.flat, bases):
+        d = a[a["baseline_policy"] == base]
+        g = d.groupby("decision", sort=False)["contribution"].agg(["mean", "std"]).fillna(0) / 1000
+        gain = d.groupby("train_seed")["gain"].first() / 1000
+        ax.bar(range(len(g)), g["mean"], yerr=g["std"], width=0.65, capsize=2,
+               color=[style.DECISION_COLORS.get(k, style.MUTED) for k in g.index],
+               error_kw={"elinewidth": 0.7, "ecolor": style.INK_2})
+        ax.axhline(0, color=style.AXIS, lw=0.8)
+        ax.set_xticks(range(len(g)))
+        ax.set_xticklabels([style.DECISION_LABELS.get(k, k) for k in g.index])
+        spread = f" ± {gain.std():.1f}" if len(gain) > 1 else ""
+        ax.set_title(f"PPO vs {style.label(base)}: {gain.mean():+.1f}{spread}k INR/ha", fontsize=7.5)
+        ax.grid(axis="x", visible=False)
+    for ax in axes[:, 0]:
+        ax.set_ylabel("share of PPO's gain\n(thousand INR/ha)")
+    return fig
+
+
+def sensitivity_tornado(run=None, baseline=None):
+    """What a 20% change in one price, cost, yield-model or mechanism parameter does to
+    PPO's held-out gain over the reference rule and to random's profit relative to PPO."""
+    run = runs.get(run)
+    table, base, ref = gain_under_scaling(run, baseline)
+    span = table.groupby("factor", sort=False)["gain"].agg(lambda g: (g - base["gain"]).abs().max())
+    order = span.sort_values().index.tolist()
+    lo_m, hi_m = table["multiplier"].min(), table["multiplier"].max()
+    fig, axes = plt.subplots(1, 2, figsize=(style.FULL, 0.2 * len(order) + 1.1), sharey=True,
+                             gridspec_kw={"wspace": 0.06})
+    panels = [("gain", 1 / 1000, f"PPO gain over {style.label(ref)}\n(thousand INR/ha)"),
+              ("random_share", 100, "random's profit\n(% of PPO's)")]
+    for ax, (col, k, xlabel) in zip(axes, panels):
+        for y, factor in enumerate(order):
+            rows = table[table["factor"] == factor].set_index("multiplier")[col] * k
+            for mult, color in ((lo_m, style.DRY), (hi_m, style.WET)):
+                if mult in rows.index:
+                    ax.barh(y, rows[mult] - base[col] * k, left=base[col] * k, height=0.62, color=color)
+        ax.axvline(base[col] * k, color=style.INK_2, lw=0.8)
+        ax.set_xlabel(xlabel)
+        ax.grid(axis="y", visible=False)
+    axes[0].set_yticks(range(len(order)))
+    axes[0].set_yticklabels([f.replace("_", " ") for f in order], fontsize=6)
+    handles = [plt.Rectangle((0, 0), 1, 1, color=c) for c in (style.DRY, style.WET)]
+    fig.legend(handles, [f"× {lo_m:g}", f"× {hi_m:g}"], loc="upper center", ncol=2, fontsize=6.5,
+               bbox_to_anchor=(0.55, 0.98))
+    return fig
+
+
+def dry_wet_profit(run=None):
+    """Mean held-out profit per policy in seasons drier and wetter than the median."""
+    run = runs.get(run)
+    d = run.dry_wet
+    if d is None or d.empty:
+        raise SkipFigure("no dry_wet.csv in the run")
+    d = d[(d["split"] == "test") & d["policy"].isin(run.policies())]
+    if d.empty:
+        raise SkipFigure("no held-out seasons in dry_wet.csv")
+    by = d.pivot(index="policy", columns="season_type", values="profit")
+    order = by.mean(axis=1).sort_values(ascending=False).index.tolist()
+    spread = d[d["policy"] == AGENT].set_index("season_type")["profit_seed_std"]
+    counts = d.groupby("season_type")["seasons"].first()
+    fig, ax = plt.subplots(figsize=(style.COLUMN, 2.6))
+    for k, (kind, color, name) in enumerate((("dry", style.DRY, "drier"), ("wet", style.WET, "wetter"))):
+        if kind not in by:
+            continue
+        x = np.arange(len(order)) + (k - 0.5) * 0.38
+        ax.bar(x, by.loc[order, kind] / 1000, width=0.36, color=color,
+               label=f"{name} than median ({int(counts[kind])} seasons)")
+        if AGENT in order and kind in spread.index and np.isfinite(spread[kind]):
+            ax.errorbar(x[order.index(AGENT)], by.loc[AGENT, kind] / 1000, yerr=spread[kind] / 1000,
+                        color=style.INK_2, capsize=2, lw=0.7)
+    ax.set_xticks(range(len(order)))
+    ax.set_xticklabels([style.label(p) for p in order], rotation=30, ha="right")
+    ax.axhline(0, color=style.AXIS, lw=0.8)
+    ax.set(ylabel="net profit (thousand INR/ha)",
+           title=f"Held-out seasons by rainfall (median {d['median_rain_mm'].iloc[0]:.0f} mm)")
+    ax.grid(axis="x", visible=False)
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.42), ncol=1)
+    return fig
+
+
+def region_comparison(run=None):
+    """The same pipeline under another config (runs named <run>_<variant>, e.g. the Haryana
+    one): held-out profit of every policy, one panel per run."""
+    run = runs.get(run)
+    others = runs.related(run)
+    if not others:
+        raise SkipFigure(f"no related run named {run.name}_<variant> next to this one")
+    group = [run, *others]
+    fig, axes = plt.subplots(1, len(group), figsize=(style.FULL, 2.6), squeeze=False, gridspec_kw={"wspace": 0.3})
+    for ax, r in zip(axes[0], group):
+        means = _test_episodes(r).groupby("policy")["profit"].mean().sort_values(ascending=False) / 1000
+        colors = style.policy_colors(means.index)
+        ax.bar(range(len(means)), means, width=0.7, color=[colors[p] for p in means.index])
+        ax.set_xticks(range(len(means)))
+        ax.set_xticklabels([style.label(p) for p in means.index], rotation=40, ha="right", fontsize=6)
+        ax.axhline(0, color=style.AXIS, lw=0.8)
+        seeds = r.seed_summary
+        note = ""
+        if seeds is not None and (seeds["split"] == "test").sum() > 1:
+            t = seeds[seeds["split"] == "test"]["profit"] / 1000
+            note = f"\nPPO {t.mean():.1f} ± {t.std():.1f}k over {len(t)} seeds"
+        region = str(r.meta.get("region") or r.config["env"].get("region") or r.name).title()
+        ax.set_title(f"{region} ({r.meta['weather_site']} weather){note}", fontsize=7.5)
+        ax.grid(axis="x", visible=False)
+    axes[0, 0].set_ylabel("net profit, held-out seasons\n(thousand INR/ha)")
+    return fig
+
+
 FIGURES = {
     "learning_curve": learning_curve,
     "policy_comparison": policy_comparison,
@@ -381,6 +562,11 @@ FIGURES = {
     "pesticide_response": pesticide_response,
     "training_diagnostics": training_diagnostics,
     "season_gain": season_gain,
+    "seed_robustness": seed_robustness,
+    "gain_attribution": gain_attribution,
+    "sensitivity_tornado": sensitivity_tornado,
+    "dry_wet_profit": dry_wet_profit,
+    "region_comparison": region_comparison,
 }
 
 

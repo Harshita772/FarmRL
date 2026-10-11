@@ -73,6 +73,37 @@ class Run:
     def sensitivity(self):
         return self._csv("sensitivity.csv")
 
+    @cached_property
+    def seed_episodes(self):
+        return self._csv("seed_episodes.csv")
+
+    @cached_property
+    def seed_summary(self):
+        return self._csv("seed_summary.csv")
+
+    @cached_property
+    def attribution(self):
+        return self._csv("attribution.csv")
+
+    @cached_property
+    def dry_wet(self):
+        return self._csv("dry_wet.csv")
+
+    @cached_property
+    def tuning(self):
+        """Tuned rule-baseline parameters ({family: record}), or None for older runs."""
+        p = self.path / "baseline_tuning.json"
+        return json.loads(p.read_text()) if p.exists() else None
+
+    @property
+    def reference_policy(self):
+        """The rule baseline PPO is measured against: the tuned one that did best in
+        training; 'recommended' for runs made before the baselines were tuned."""
+        ref = self.meta.get("reference_policy")
+        if ref:
+            return ref
+        return "recommended" if "recommended" in self.meta["policies"] else None
+
     @property
     def model_path(self):
         return self.path / "model.pt"
@@ -100,6 +131,14 @@ def list_runs(runs_dir=None):
     metas = [p for p in root.glob("*/metadata.json")]
     metas.sort(key=lambda p: json.loads(p.read_text()).get("created", ""), reverse=True)
     return [p.parent.name for p in metas]
+
+
+def related(run, runs_dir=None):
+    """Runs made as variants of ``run`` (other region, other data): those named
+    ``<run name>_<something>`` in the same folder, e.g. v3_haryana next to v3."""
+    run = get(run, runs_dir)
+    names = [n for n in list_runs(run.path.parent) if n.startswith(run.name + "_")]
+    return [Run(run.path.parent / n) for n in sorted(names)]
 
 
 def get(run=None, runs_dir=None):

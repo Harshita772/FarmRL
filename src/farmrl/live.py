@@ -8,8 +8,8 @@ import pandas as pd
 
 from . import rollout
 from .agents.ppo import PPO
-from .baselines import BASELINES
-from .env import FarmEnv, OBS_NAMES, scale_config
+from .baselines import BASELINES, tuned_policies
+from .env import FarmEnv, scale_config
 from .yield_model import YieldModel
 
 
@@ -30,8 +30,9 @@ def load_agent(run):
 
 
 def policies(run, agent, names=None):
-    """{name: policy function} for the trained agent and the registered baselines."""
-    available = {"ppo": lambda obs, env: agent.predict(obs), **BASELINES}
+    """{name: policy function} for the trained agent, the registered baselines and the
+    run's tuned rule baselines."""
+    available = {"ppo": lambda obs, env: agent.predict(obs), **BASELINES, **tuned_policies(run.tuning)}
     return {k: v for k, v in available.items() if names is None or k in names}
 
 
@@ -43,10 +44,14 @@ def simulate(run, agent, season, names=None, seed=0, **scales):
 
 
 def action_distribution(run, agent, state):
-    """Action probabilities for an observation given as {obs name: scaled value}.
+    """Action probabilities for an observation given as {obs name: scaled value}; entries
+    the run's environment has but ``state`` lacks take their start-of-season value.
     Returns {input: (levels in real units, probabilities)}."""
     env = make_env(run)
-    obs = np.array([state[k] for k in OBS_NAMES], dtype=np.float32)
+    start = dict(zip(env.obs_names, env.reset(seed=0)[0]))
+    obs = np.array([state.get(k, start[k]) for k in env.obs_names], dtype=np.float32)
     probs = agent.action_probs(obs)
     levels = {"nitrogen_kg": env.n_levels, "irrigation_mm": env.w_levels, "pesticide_level": env.p_levels}
+    if env.on["storage"]:
+        levels["store_months"] = env.store_levels
     return {name: (lv, p) for (name, lv), p in zip(levels.items(), probs)}

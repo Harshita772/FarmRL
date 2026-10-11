@@ -37,7 +37,7 @@ def headline(run, baseline=None):
     if AGENT not in means.index or len(means) < 2:
         return None
     others = means.drop(index=AGENT)
-    base = baseline if baseline in others.index else ("recommended" if "recommended" in others.index
+    base = baseline if baseline in others.index else (run.reference_policy if run.reference_policy in others.index
                                                       else others["profit"].idxmax())
     a, b = means.loc[AGENT], means.loc[base]
     pct = lambda new, old: (new - old) / abs(old) * 100 if old else float("nan")
@@ -47,7 +47,8 @@ def headline(run, baseline=None):
             "water_saved_pct": -pct(a["irrigation_mm"], b["irrigation_mm"]),
             "nitrogen_change_kg": a["nitrogen_kg"] - b["nitrogen_kg"],
             "nitrogen_change_pct": pct(a["nitrogen_kg"], b["nitrogen_kg"]),
-            "yield_gain": a["yield_q_ha"] - b["yield_q_ha"], "seasons": int(_test(run)["season"].nunique())}
+            "yield_gain": a["yield_q_ha"] - b["yield_q_ha"], "seasons": int(_test(run)["season"].nunique()),
+            "random_share": means.loc["random", "profit"] / a["profit"] * 100 if "random" in means.index else None}
 
 
 def summary_table(run, policies=None, split="test"):
@@ -222,10 +223,13 @@ def profit_by_season(run, policies=None, split="test"):
                    xaxis=dict(dtick=1 if by["season"].nunique() < 15 else None))
 
 
-def dry_wet(run, policies=None):
-    """Mean profit in seasons drier / wetter than the median, all seasons pooled."""
+def dry_wet(run, policies=None, split=None):
+    """Mean profit in seasons drier / wetter than the median season of the run; ``split``
+    keeps only the "test" or "train" seasons (default: all seasons pooled)."""
     eps = run.episodes[run.episodes["policy"].isin(policies or run.policies())].copy()
-    median = eps.groupby("season")["rain_mm"].first().median()
+    median = run.episodes.groupby("season")["rain_mm"].first().median()
+    if split:
+        eps = eps[eps["split"] == split]
     eps["type"] = np.where(eps["rain_mm"] > median, "wetter than median", "drier than median")
     by = eps.groupby(["policy", "type"])["profit"].mean().unstack()
     order = by.mean(axis=1).sort_values(ascending=False).index
@@ -234,8 +238,117 @@ def dry_wet(run, policies=None):
         if kind in by:
             fig.add_trace(go.Bar(x=[style.label(p) for p in order], y=by.loc[order, kind], name=kind, marker_color=color,
                                  hovertemplate="%{x}, " + kind + ": %{y:,.0f}<extra></extra>"))
-    return _layout(fig, barmode="group", title=f"Profit in dry and wet seasons (median rain {median:.0f} mm)",
+    where = {"test": "held-out ", "train": "training "}.get(split, "")
+    return _layout(fig, barmode="group", title=f"Profit in dry and wet {where}seasons (median rain {median:.0f} mm)",
                    yaxis_title="INR per hectare")
+
+
+def dry_wet_table(run, policies=None, split="test"):
+    """The dry / wet breakdown as a table, with PPO's spread over training seeds."""
+    d = run.dry_wet
+    d = d[(d["split"] == split) & d["policy"].isin(policies or run.policies())]
+    wide = d.pivot(index="policy", columns="season_type", values="profit")
+    out = pd.DataFrame({"Policy": [style.label(p) for p in wide.index]})
+    for kind, name in (("dry", "Drier seasons (INR/ha)"), ("wet", "Wetter seasons (INR/ha)")):
+        if kind in wide:
+            out[name] = wide[kind].to_numpy()
+    if {"dry", "wet"} <= set(wide.columns):
+        out["Wet − dry"] = (wide["wet"] - wide["dry"]).to_numpy()
+    ppo = d[d["policy"] == AGENT].set_index("season_type")["profit_seed_std"]
+    out["PPO std over seeds"] = [" / ".join(f"{ppo[k]:,.0f}" for k in ("dry", "wet") if k in ppo.index and np.isfinite(ppo[k]))
+                                 if p == AGENT else "" for p in wide.index]
+    return out.sort_values(out.columns[1], ascending=False).reset_index(drop=True)
+
+
+def seed_profit(run, policies=None):
+    """Held-out profit of every PPO training seed (bars) against the other policies (lines)."""
+    seeds = run.seed_summary[run.seed_summary["split"] == "test"].sort_values("train_seed")
+    means = _test(run, policies).groupby("policy")["profit"].mean().drop(index=AGENT, errors="ignore")
+    colors = style.policy_colors([AGENT, *means.index])
+    fig = go.Figure(go.Bar(x=[f"seed {int(s)}" for s in seeds["train_seed"]], y=seeds["profit"], name="PPO",
+                           marker_color=colors[AGENT], hovertemplate="%{x}: %{y:,.0f} INR/ha<extra></extra>"))
+    for name, value in means.sort_values(ascending=False).items():
+        fig.add_hline(y=value, line=dict(color=colors[name], dash="dash", width=1.5),
+                      annotation_text=style.label(name), annotation_position="top right")
+    mean, std = seeds["profit"].mean(), seeds["profit"].std() if len(seeds) > 1 else 0.0
+    return _layout(fig, title=f"PPO on held-out seasons, {len(seeds)} training seeds: {mean:,.0f} ± {std:,.0f} INR/ha",
+                   yaxis_title="INR per hectare", showlegend=False)
+
+
+def seed_table(run):
+    """One row per PPO training seed on the held-out seasons, then mean and std."""
+    cols = {"train_seed": "Training seed", "profit": "Profit (INR/ha)", "yield_q_ha": "Yield (q/ha)",
+            "nitrogen_kg": "N (kg/ha)", "irrigation_mm": "Irrigation (mm)", "pesticide_level": "Pesticide (doses)",
+            "store_months": "Stored (months)"}
+    s = run.seed_summary[run.seed_summary["split"] == "test"]
+    cols = {k: v for k, v in cols.items() if k in s}
+    out = s[list(cols)].astype(float)
+    stats = pd.DataFrame([out.mean(), out.std()]).assign(train_seed=["mean", "std"])
+    out["train_seed"] = out["train_seed"].astype(int).astype(str)
+    return pd.concat([out, stats], ignore_index=True).rename(columns=cols)
+
+
+def attribution(run, baseline=None):
+    """PPO's held-out gain over one rule baseline, split between the decisions (Shapley
+    values; bars are the mean over training seeds, whiskers the std)."""
+    a = run.attribution
+    base = baseline if baseline in set(a["baseline_policy"]) else (
+        run.reference_policy if run.reference_policy in set(a["baseline_policy"]) else a["baseline_policy"].iloc[0])
+    d = a[a["baseline_policy"] == base]
+    g = d.groupby("decision", sort=False)["contribution"].agg(["mean", "std"]).fillna(0)
+    gain = d.groupby("train_seed")["gain"].first()
+    fig = go.Figure(go.Bar(x=[style.DECISION_LABELS.get(k, k) for k in g.index], y=g["mean"],
+                           error_y=dict(type="data", array=g["std"], color=style.INK_2, thickness=1.2),
+                           marker_color=[style.DECISION_COLORS.get(k, style.MUTED) for k in g.index],
+                           text=[f"{v / gain.mean():.0%}" if gain.mean() else "" for v in g["mean"]],
+                           textposition="outside", hovertemplate="%{x}: %{y:,.0f} INR/ha<extra></extra>"))
+    spread = f" ± {gain.std():,.0f}" if len(gain) > 1 else ""
+    return _layout(fig, title=f"Where PPO's gain over {style.label(base)} comes from "
+                              f"({gain.mean():+,.0f}{spread} INR/ha on held-out seasons)",
+                   yaxis_title="INR per hectare", showlegend=False, height=420)
+
+
+def attribution_table(run):
+    """Mean contribution of each decision to PPO's gain over every rule baseline."""
+    a = run.attribution
+    wide = a.groupby(["baseline_policy", "decision"], sort=False)["contribution"].mean().unstack()
+    gain = a.groupby(["baseline_policy", "train_seed"])["gain"].first().groupby("baseline_policy").agg(["mean", "std"])
+    out = pd.DataFrame({"Against": [style.label(p) for p in wide.index]})
+    for k in wide.columns:
+        out[style.DECISION_LABELS.get(k, k)] = wide[k].to_numpy()
+    out["Total gain"] = gain.loc[wide.index, "mean"].to_numpy()
+    out["Gain std over seeds"] = gain.loc[wide.index, "std"].to_numpy()
+    return out
+
+
+def compare_runs(group, policies=None):
+    """Held-out profit of every policy in several runs (e.g. the same pipeline under
+    another region's config), one group of bars per run."""
+    fig = go.Figure()
+    names = list(dict.fromkeys(p for r in group for p in r.policies() if not policies or p in policies))
+    colors = style.policy_colors(names)
+    label = lambda r: f"{r.name} · {str(r.meta.get('region') or r.config['env'].get('region') or '').title()}"
+    for p in names:
+        ys = [_test(r, [p])["profit"].mean() if p in r.policies() else None for r in group]
+        fig.add_trace(go.Bar(x=[label(r) for r in group], y=ys, name=style.label(p), marker_color=colors[p],
+                             hovertemplate=style.label(p) + " %{x}: %{y:,.0f} INR/ha<extra></extra>"))
+    return _layout(fig, barmode="group", title="Held-out profit by run", yaxis_title="INR per hectare")
+
+
+def compare_runs_table(group):
+    """Headline numbers of several runs side by side."""
+    rows = []
+    for r in group:
+        k = headline(r)
+        if k is None:
+            continue
+        seeds = r.seed_summary
+        t = seeds[seeds["split"] == "test"]["profit"] if seeds is not None else pd.Series(dtype=float)
+        rows.append({"Run": r.name, "Region": str(r.meta.get("region") or r.config["env"].get("region") or "").title(),
+                     "Weather": r.meta["weather_site"], "PPO profit (INR/ha)": k["profit"],
+                     "PPO std over seeds": t.std() if len(t) > 1 else np.nan, "Reference rule": style.label(k["baseline"]),
+                     "Gain over reference": k["profit_gain"], "Random, % of PPO": k["random_share"]})
+    return pd.DataFrame(rows)
 
 
 def rain_response(run, policies=None):
@@ -253,14 +366,18 @@ def rain_response(run, policies=None):
                    xaxis_title="season rain (mm)", yaxis_title="irrigation (mm)")
 
 
-def sensitivity(run, policies=None):
+def sensitivity(run, policies=None, group=None):
+    """Held-out profit of every policy when one factor is scaled; ``group`` keeps the factors
+    of one group of the sensitivity table (prices, costs, yield model, mechanisms)."""
     s = run.sensitivity
     s = s[s["policy"].isin(policies or run.policies())]
-    factors = [f for f in s["factor"].unique() if f != "baseline"]
     base = s[s["factor"] == "baseline"].set_index("policy")["profit"]
-    colors = style.policy_colors(s["policy"].unique())
-    fig = make_subplots(rows=1, cols=len(factors), shared_yaxes=True,
-                        subplot_titles=[f.replace("_", " ") + " ×" for f in factors])
+    if group and "group" in s:
+        s = s[s["group"] == group]
+    factors = [f for f in s["factor"].unique() if f != "baseline"]
+    colors = style.policy_colors(base.index)
+    fig = make_subplots(rows=1, cols=max(1, len(factors)), shared_yaxes=True,
+                        subplot_titles=[f.split(".")[-1].replace("_", " ") + " ×" for f in factors])
     for j, f in enumerate(factors, start=1):
         d = s[s["factor"] == f]
         for p in base.index:
@@ -270,8 +387,43 @@ def sensitivity(run, policies=None):
                                      legendgroup=p, showlegend=j == 1, line=dict(color=colors[p], width=2),
                                      hovertemplate=style.label(p) + " ×%{x}: %{y:,.0f}<extra></extra>"), row=1, col=j)
     fig.update_yaxes(title_text="profit (INR/ha)", row=1, col=1)
-    return _layout(fig, height=440, title="Sensitivity: held-out profit when one price, cost or penalty is scaled",
+    return _layout(fig, height=440, title="Sensitivity: held-out profit when one quantity is scaled",
                    margin=dict(l=50, r=20, t=110, b=45))
+
+
+def sensitivity_gain(run, baseline=None):
+    """Tornado chart: PPO's held-out gain over the reference rule when each factor is
+    scaled down / up, widest effect on top."""
+    from .figures import gain_under_scaling
+    table, base, ref = gain_under_scaling(run, baseline)
+    span = table.groupby("factor", sort=False)["gain"].agg(lambda g: (g - base["gain"]).abs().max())
+    order = span.sort_values().index.tolist()
+    lo_m, hi_m = table["multiplier"].min(), table["multiplier"].max()
+    fig = go.Figure()
+    for mult, color in ((lo_m, style.DRY), (hi_m, style.WET)):
+        rows = table[table["multiplier"] == mult].set_index("factor").reindex(order)
+        fig.add_trace(go.Bar(y=[f.replace("_", " ") for f in order], x=rows["gain"] - base["gain"], base=base["gain"],
+                             orientation="h", name=f"× {mult:g}", marker_color=color,
+                             customdata=np.stack([rows["gain"], rows["random_share"] * 100], axis=-1),
+                             hovertemplate="%{y} × " + f"{mult:g}" + ": gain %{customdata[0]:,.0f} INR/ha, "
+                                           "random at %{customdata[1]:.0f}% of PPO<extra></extra>"))
+    fig.add_vline(x=base["gain"], line=dict(color=style.INK_2, width=1))
+    return _layout(fig, barmode="overlay", height=120 + 26 * len(order),
+                   title=f"PPO's gain over {style.label(ref)} when one quantity changes "
+                         f"(unchanged: {base['gain']:+,.0f} INR/ha)",
+                   xaxis_title="INR per hectare", margin=dict(l=190, r=20, t=90, b=45))
+
+
+def sensitivity_table(run, baseline=None):
+    """The numbers behind the tornado: one row per factor."""
+    from .figures import gain_under_scaling
+    table, base, ref = gain_under_scaling(run, baseline)
+    rows = [{"Group": "", "Factor": "unchanged", "×": 1.0, "PPO profit": base["ppo"], f"{style.label(ref)} profit": base["reference"],
+             "PPO gain": base["gain"], "Random, % of PPO": base["random_share"] * 100}]
+    for r in table.sort_values(["group", "factor", "multiplier"]).itertuples():
+        rows.append({"Group": r.group, "Factor": r.factor.replace("_", " "), "×": r.multiplier, "PPO profit": r.ppo,
+                     f"{style.label(ref)} profit": r.reference, "PPO gain": r.gain, "Random, % of PPO": r.random_share * 100})
+    return pd.DataFrame(rows)
 
 
 # ---------------------------------------------------------------------------------- data
