@@ -89,9 +89,22 @@ def describe(model, report):
         note = "" if flag is None else ("  (fitted)" if flag else "  (not identified -> neutral/prior)")
         if k == "ky" and report["ky_calibrated"]:
             note = "  (calibrated to the fitted rainfed loss)"
+        if k == "pest_loss":
+            pest = report.get("pesticide")
+            note = (f"  ({pest['status']}, n = {pest['n_obs']} national years; was {pest['previous_value']:.2f})"
+                    if pest else "  (prior: no pesticide table)")
         if k == "r0" and v > 1e5:
             v, note = float("inf"), "  (no rain dependence identified)"
         lines.append(f"  {k:<10} {v:10.4f}{note}")
+    pest = report.get("pesticide")
+    if pest:
+        lo, hi = pest["interval_90"]
+        lines.append(f"  pesticide calibration: L = {pest['estimate']:.3f} +/- {pest['std_err']:.3f} "
+                     f"(90% interval {lo:.2f}-{hi:.2f}), measure: {pest['pesticide_measure']}")
+        lines.append(f"      controls: {', '.join(pest['controls'])}"
+                     + (f"; dropped (no variation in the series): {', '.join(pest['controls_dropped_no_variation'])}"
+                        if pest["controls_dropped_no_variation"] else ""))
+        lines.append(f"      {pest['quality_note']}")
     lines.append(f"  y_scale = {report['y_scale']:.3f}: the recommended schedule now averages the observed "
                  f"{report['mean_observed_yield']:.1f} q/ha ({report.get('region') or 'all records'}) on the train seasons")
     return lines

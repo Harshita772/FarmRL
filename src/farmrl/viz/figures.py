@@ -282,18 +282,37 @@ def yield_surface(run=None, fit_table=None):
 
 
 def pesticide_response(run=None, table=None):
-    """Yield against pesticide use from the FAO table, when that dataset is present."""
+    """Pesticide use and yield in the national FAO series: the raw relation, and yield with
+    the year trend and weather controls removed against pesticide use, with the calibrated
+    loss curve. Skipped when the FAO table is not there."""
     run = runs.get(run)
     files = sorted(dl.PROCESSED.glob("fao_*.csv")) if table is None else [Path(table)]
     if not files or not files[0].exists():
         raise SkipFigure("no FAO pesticide table in data/processed (yield_df.csv not downloaded)")
     d = pd.read_csv(files[0])
-    fig, ax = plt.subplots(figsize=(style.COLUMN, 2.4))
-    sc = ax.scatter(d["pesticides_t"] / 1000, d["yield_q_ha"], c=d["year"], cmap=style.SEQUENTIAL,
-                    s=18, edgecolor=style.INK_2, lw=0.4)
+    try:
+        cal = YieldModel().calibrate_pesticide(d)
+    except ValueError as why:
+        raise SkipFigure(str(why))
+    label = files[0].stem.replace("fao_", "").replace("_", ", ").title()
+    fig, axes = plt.subplots(1, 2, figsize=(style.FULL, 2.6), gridspec_kw={"wspace": 0.55})
+    ax = axes[0]
+    sc = ax.scatter(cal["x"], cal["observed"], c=cal["year"], cmap=style.SEQUENTIAL, s=20,
+                    edgecolor=style.INK_2, lw=0.4)
     fig.colorbar(sc, ax=ax, label="year", pad=0.02)
-    ax.set(xlabel="pesticide use (thousand tonnes)", ylabel="yield (q/ha)",
-           title=f"Yield vs pesticide use ({files[0].stem.replace('fao_', '').replace('_', ', ')})")
+    ax.set(xlabel="pesticide use (series mean = 1)", ylabel="yield (q/ha)", title=f"{label}: raw series")
+    ax = axes[1]
+    grid = np.linspace(cal["x"].min() * 0.9, cal["x"].max() * 1.05, 100)
+    level = cal["partial_yield"] / (1 - cal["estimate"] * np.exp(-cal["k_fixed"] * cal["x"]))
+    ax.scatter(cal["x"], cal["partial_yield"], c=cal["year"], cmap=style.SEQUENTIAL, s=20,
+               edgecolor=style.INK_2, lw=0.4)
+    ax.plot(grid, level.mean() * (1 - cal["estimate"] * np.exp(-cal["k_fixed"] * grid)), color=style.PALETTE[1],
+            label=f"calibrated loss L = {cal['estimate']:.2f} ± {cal['std_err']:.2f}")
+    used = run.meta["yield_model"].get("pest_loss")
+    ax.set(xlabel="pesticide use (series mean = 1)", ylabel="yield at the mean year\nand weather (q/ha)",
+           title=f"After controls ({', '.join(cal['controls'])}); n = {cal['n_obs']}")
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.24), ncol=1,
+              title=None if used is None else f"this run used L = {used:.2f}", title_fontsize=6.5)
     return fig
 
 

@@ -23,6 +23,8 @@ conda run -n TogAI python scripts/prepare_data.py      # raw -> processed, fit t
 | CACP, *Price Policy for Rabi Crops: Marketing Season 2027-28* (July 2026) | <https://cacp.da.gov.in/Home/latestRabiReports> — Government of India publication | `raw/cacp_rabi_price_policy_latest.pdf` (63 MB, scanned) | wheat cost of cultivation by state, 2022-23 – 2024-25 | costs in `configs/*.yaml` |
 | District boundaries of India (ADM2, simplified geometry) | geoBoundaries gbOpen, release of 12 Dec 2023, via <https://www.geoboundaries.org/api/current/gbOpen/IND/ADM2/> — boundary source Pathways Data Pvt. Ltd. / lgdirectory.gov.in, **Open Data Commons Open Database License (ODbL) 1.0**; attribution details are saved in `geo/india_districts_source.json` | `geo/india_districts.geojson` (8 MB, git-ignored) and `geo/districts_subset.geojson` (the districts around the mapped sites, written by `scripts/make_maps.py`, committed) | 735 districts, boundaries as of 2021 | district centroids for the weather download; district map |
 
+| Crop yield prediction dataset: national crop yields, pesticide use, rainfall and temperature | Kaggle `patelris/crop-yield-prediction-dataset`, a compilation of FAOSTAT (yield, pesticide use) and World Bank (rainfall, temperature) series; **supplied by hand** (11 Oct 2026). Licence: as stated on the Kaggle dataset page; the underlying FAOSTAT and World Bank data are, to our knowledge, published under CC BY 4.0. Check both before redistributing | `raw/yield_df.csv` (the merged table) and its source files `raw/fao/pesticides.csv`, `raw/fao/rainfall.csv`, `raw/fao/temp.csv`, `raw/fao/yield.csv` | 101 countries, 10 crops, 1990–2013; used here: India, wheat, 24 years | calibrating the pesticide-loss parameter; pesticide figure |
+
 `reference/cacp_wheat_cost_punjab.csv` and `reference/cacp_wheat_cost_haryana.csv` are Annex
 Table 5.6(a) of that CACP report (pages 189 and 184), typed in by hand because the PDF has
 no text layer. A test checks that the line items add up to the report's own total.
@@ -46,6 +48,36 @@ no text layer. A test checks that the line items add up to the report's own tota
 - The panel keeps district-years with more than 10,000 ha of wheat (`yield_fit.min_area_kha`):
   2,071 rows, 220 districts, 15 states; 1,719 rows in 13 states have everything the fit needs.
 
+### Notes on the FAO / Kaggle files
+
+- **Repeated rows.** `yield_df.csv` repeats every country-crop-year once per temperature
+  station of the country (22 times for India). `load_fao_pesticides` collapses them to one
+  row per year, averaging the temperature and keeping the count in `n_temp_rows`.
+- **2003 is restored.** India 2003 is missing from `yield_df.csv` only because the rainfall
+  source has no row for it; yield, pesticide use and temperature for that year are taken
+  from `raw/fao/` (flagged in the `source` column, rainfall left empty). Without the source
+  files the series simply has 23 years.
+- **Pesticide measure: an index.** Pesticide use is national tonnage of active ingredient
+  for *all crops*. The files contain no cropland or wheat area, so it is expressed relative
+  to the series mean (`normalisation` column). If a FAOSTAT land-use export is saved as
+  `raw/fao/cropland.csv` (columns Area, Year, Value in 1000 ha) the loader switches to kg
+  per hectare of cropland automatically.
+- **Rainfall is useless as a control.** The file gives India 1,083 mm in every year, so the
+  calibration drops it and controls for a year trend and temperature only.
+- **It is one national series.** 24 points, pesticide use falling while yields rise for
+  unrelated reasons, no wheat-specific or regional information. The pesticide loss derived
+  from it is a calibration with a wide interval, not a measurement (see below).
+
+### Pesticide-loss calibration
+
+`YieldModel.calibrate_pesticide` regresses log yield on a year trend, temperature and
+`log(1 - L exp(-k x))`, with x the pesticide index and the decay `k = 1` fixed. Result on
+the current files: **L = 0.115 ± 0.084** (90% interval 0.00–0.25), against the earlier
+placeholder of 0.35. The estimate is 1.4 standard errors from zero and raises the R² of
+log yield only from 0.827 to 0.840, so the data are compatible with no effect at all.
+Method, interval and this quality note are written to `configs/fitted_params.yaml` under
+`fit.pesticide`, with `pest_loss_status: calibrated`.
+
 ### Heat-stress days
 
 Days with a daily maximum above 30 °C between 15 February and 31 March (grain filling),
@@ -56,15 +88,19 @@ from NASA POWER `T2M_MAX`; threshold and window are `HEAT_TMAX` / `HEAT_WINDOW` 
 
 | Dataset | Why | What to do | Expected file |
 |---|---|---|---|
-| FAO crop yield + pesticides (Kaggle `patelris/crop-yield-prediction-dataset`) | `~/.kaggle/kaggle.json` is missing | create an API token on kaggle.com (Settings → API), put it in `~/.kaggle/`, run `python scripts/download_data.py kaggle` | `raw/yield_df.csv` |
+| FAOSTAT cropland area (optional) | not part of the Kaggle dataset | FAOSTAT → Land Use → Cropland, export Area / Year / Value (1000 ha) | `raw/fao/cropland.csv` |
 | DES Cost of Cultivation plot-level series (data.gov.in) | `api.data.gov.in` and `desagri.gov.in` refused connections from our network, and the API needs a key | manual CSV download or `DATA_GOV_IN_API_KEY` + `DATA_GOV_IN_COC_RESOURCE` | `raw/cost_of_cultivation.csv` |
 | Agmarknet wheat modal prices, Punjab mandis | same (API key / unreachable) | `DATA_GOV_IN_API_KEY`, or export from agmarknet.gov.in | `raw/agmarknet_wheat_punjab.csv` |
 | ICRISAT rainfall | not among the supplied files; NASA POWER is used instead | optional | `raw/icrisat_rainfall.csv` |
 
 `scripts/download_data.py` prints the exact steps for each. Consequences for the current
-results: the pesticide-loss parameter is a prior, not a fit, and the pesticide figure is
-skipped; harvest prices cover only seasons 2008–2015, so the held-out seasons (2017+) are
-priced at the MSP.
+results: harvest prices cover only seasons 2008–2015, so the held-out seasons (2017+) are
+priced at the MSP; pesticide use is an index rather than kg/ha. Runs `v1` and `v2` were
+trained before the FAO data arrived and still use the placeholder pesticide loss of 0.35;
+a new run picks up the calibrated value.
+
+`download_data.py kaggle` recognises a `yield_df.csv` that was saved by hand and lists the
+source files it finds in `raw/fao/`; with a Kaggle token it downloads the file itself.
 
 ## Processed tables
 
@@ -79,4 +115,5 @@ priced at the MSP.
 | `wheat_msp.csv`, `wheat_prices.csv` | `load_msp`, `load_prices` | MSP per season and its index around a 5-year trend |
 | `wheat_prices_<region>.csv` | `load_prices(region=…)` | region harvest prices where available, MSP otherwise; this is what the environment uses |
 | `cost_of_cultivation_wheat_<state>.csv` | `load_cost_of_cultivation` | CACP table in long form |
-| `fao_wheat_india.csv`, `wheat_mandi_monthly.csv` | `load_fao_pesticides`, `load_agmarknet` | only once the raw files exist |
+| `fao_wheat_india.csv` | `load_fao_pesticides` | one row per year: yield, pesticide tonnage and index, temperature, rainfall, source, normalisation |
+| `wheat_mandi_monthly.csv` | `load_agmarknet` | only once the raw file exists |

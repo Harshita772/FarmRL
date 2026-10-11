@@ -262,13 +262,43 @@ def build_fit_table(crop="wheat", min_area_kha=10.0, raw=RAW, processed=PROCESSE
 
 
 # -------------------------------------------------------------------- FAO yield/pesticides
-def load_fao_pesticides(area="India", item="Wheat", raw=RAW, processed=PROCESSED, save=True):
-    """Kaggle 'crop yield prediction dataset' (FAO + World Bank) -> country-year rows.
+def _fao_raw_series(folder, area, item):
+    """(yield hg/ha, pesticide tonnes, mean temperature, cropland 1000 ha) by year from the
+    original source files in data/raw/fao/, each ``None`` when its file is not there."""
+    def read(name, area_col, value_col, year_col="Year", where=None, how="first"):
+        path = Path(folder) / name
+        if not path.exists():
+            return None
+        df = pd.read_csv(path)
+        df.columns = [c.strip() for c in df.columns]
+        df = df[df[area_col] == area]
+        for col, value in (where or {}).items():
+            df = df[df[col] == value]
+        series = pd.to_numeric(df[value_col], errors="coerce").groupby(df[year_col].astype(int)).agg(how)
+        return series.dropna() if len(series) else None
+    return (read("yield.csv", "Area", "Value", where={"Item": item}),
+            read("pesticides.csv", "Area", "Value"),
+            read("temp.csv", "country", "avg_temp", year_col="year", how="mean"),
+            read("cropland.csv", "Area", "Value"))
 
-    Pesticide use is national tonnage, so it is converted to an index relative to the
-    series mean; yield is converted from hg/ha to q/ha."""
-    path = _need(Path(raw) / "yield_df.csv", "run scripts/download_data.py kaggle "
-                                              "(needs ~/.kaggle/kaggle.json)")
+
+def load_fao_pesticides(area="India", item="Wheat", raw=RAW, processed=PROCESSED, save=True):
+    """Kaggle 'crop yield prediction dataset' (FAO + World Bank) -> one row per year for
+    ``area`` and ``item``.
+
+    * **De-duplication.** ``yield_df.csv`` repeats every Area-Item-Year once per temperature
+      station of the country; the rows are collapsed to one, with the temperature averaged
+      and the number of repeats kept in ``n_temp_rows``.
+    * **Missing years.** A year absent from ``yield_df.csv`` only because one source had no
+      row for it is restored from the original files in ``raw/fao/`` when they are there
+      (``source`` says which rows these are; their rainfall stays missing).
+    * **Pesticide measure.** Pesticide use is national tonnage of active ingredient for all
+      crops. If ``raw/fao/cropland.csv`` (FAOSTAT land use: Area, Year, Value in 1000 ha)
+      exists it is converted to kg per ha of cropland; otherwise to an index relative to the
+      series mean. ``pesticide_x`` holds the chosen measure and ``normalisation`` names it.
+    Yield is converted from hg/ha to q/ha."""
+    path = _need(Path(raw) / "yield_df.csv", "run scripts/download_data.py kaggle (needs "
+                                              "~/.kaggle/kaggle.json), or save the file there by hand")
     df = pd.read_csv(path)
     df = df.loc[:, ~df.columns.str.startswith("Unnamed")]
     df = df[(df["Area"] == area) & (df["Item"] == item)]
@@ -277,10 +307,28 @@ def load_fao_pesticides(area="India", item="Wheat", raw=RAW, processed=PROCESSED
     out = (df.groupby("Year", as_index=False)
              .agg(yield_hg_ha=("hg/ha_yield", "mean"), pesticides_t=("pesticides_tonnes", "mean"),
                   rain_mm_year=("average_rain_fall_mm_per_year", "mean"),
-                  avg_temp=("avg_temp", "mean"))
+                  avg_temp=("avg_temp", "mean"), n_temp_rows=("avg_temp", "size"))
              .rename(columns={"Year": "year"}))
+    out["source"] = "yield_df.csv"
+
+    y_raw, p_raw, t_raw, cropland = _fao_raw_series(Path(raw) / "fao", area, item)
+    if y_raw is not None and p_raw is not None and t_raw is not None:
+        years = y_raw.index.intersection(p_raw.index).intersection(t_raw.index)
+        gaps = [y for y in years if out["year"].min() < y < out["year"].max() and y not in set(out["year"])]
+        if gaps:
+            extra = pd.DataFrame({"year": gaps, "yield_hg_ha": y_raw.loc[gaps].values,
+                                  "pesticides_t": p_raw.loc[gaps].values, "rain_mm_year": np.nan,
+                                  "avg_temp": t_raw.loc[gaps].values, "n_temp_rows": 0,
+                                  "source": "raw/fao (not in yield_df.csv)"})
+            out = pd.concat([out, extra], ignore_index=True).sort_values("year").reset_index(drop=True)
     out["yield_q_ha"] = out["yield_hg_ha"] / 1000.0
     out["pesticide_index"] = out["pesticides_t"] / out["pesticides_t"].mean()
+    area_kha = None if cropland is None else out["year"].map(cropland)
+    if area_kha is not None and area_kha.notna().all():
+        out["pesticide_kg_ha"] = out["pesticides_t"] / area_kha          # t / 1000 ha = kg / ha
+        out["pesticide_x"], out["normalisation"] = out["pesticide_kg_ha"], "kg of active ingredient per ha of cropland"
+    else:
+        out["pesticide_x"], out["normalisation"] = out["pesticide_index"], "index (national tonnage / series mean)"
     return _write(out, processed, f"fao_{item.lower()}_{area.lower()}.csv", save)
 
 
