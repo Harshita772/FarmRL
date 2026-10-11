@@ -3,7 +3,8 @@
     conda run -n TogAI python scripts/run_all.py --run-name v2
     conda run -n TogAI python scripts/run_all.py --run-name smoke --quick
     conda run -n TogAI python scripts/run_all.py --run-name v2 --skip data experiments   # redraw only
-    conda run -n TogAI python scripts/run_all.py --run-name haryana --config configs/haryana.yaml
+    conda run -n TogAI python scripts/run_all.py --run-name v3_haryana --config configs/haryana.yaml --no-demo
+    (a run named <name>_<variant> is drawn next to <name> in its region figure and on the Robustness page)
 
 Stages, in order (each is a script that can also be run on its own):
     data         scripts/prepare_data.py     raw -> processed tables, fit the yield model
@@ -27,12 +28,12 @@ p.add_argument("--quick", action="store_true", help="few timesteps and seeds (sm
 p.add_argument("--skip", nargs="*", default=[], choices=STAGES, help="stages to skip")
 p.add_argument("--only", nargs="*", default=None, choices=STAGES, help="run just these stages")
 p.add_argument("--seeds", type=int, default=None, help="rollout replicates per season")
-p.add_argument("--multi-seed-train", type=int, default=None, metavar="K", help="PPO training seeds (default 3, quick 2)")
+p.add_argument("--multi-seed-train", type=int, default=None, metavar="K", help="PPO training seeds (default 5, quick 2)")
 p.add_argument("--compare", default="recommended", help="policy shown next to PPO in the animation")
 p.add_argument("--no-demo", action="store_true", help="do not overwrite docs/demo.gif")
 a = p.parse_args()
 
-k = a.multi_seed_train or (2 if a.quick else 3)
+k = a.multi_seed_train or (2 if a.quick else 5)
 experiments = ["run_experiments.py", "--run-name", a.run_name, "--multi-seed-train", str(k), "--districts", "--sensitivity"]
 experiments += ["--quick"] if a.quick else []
 experiments += ["--seeds", str(a.seeds)] if a.seeds else []
