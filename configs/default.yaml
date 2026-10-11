@@ -38,14 +38,83 @@ env:
   penalties:
     excess_nitrogen: 5.0        # INR per kg of soil mineral N above dynamics.soil_n_safe, per step
     pesticide_use: 100.0        # INR per pesticide level applied
-    irrigation_per_mm: 5.0      # INR per mm pumped (groundwater depletion; power is unpriced)
+    irrigation_per_mm: 0.0      # was 5.0 in v2: replaced by the lift-dependent pumping cost (groundwater)
   reward_scale: 10000.0         # reward = INR / reward_scale
   seed: 42
+
+  # ---- mechanisms that make over-use and timing costly (added for run v3) ---------
+  # Each block has its own switch; with all four off the simulator is the v2 one.
+  # ASSUMED = our own order-of-magnitude choice, not taken from a table. The sources named
+  # here were written from memory and still have to be checked against the originals.
+  groundwater:
+    enabled: true
+    # Pumping cost = energy to lift the water x price of energy. Lifting 1 mm over 1 ha
+    # (10 m3) by H metres takes 0.02725 x H kWh (physics), divided by the pump-set
+    # efficiency: at 25 m, 35% and Rs 6/kWh that is Rs 11.7 per mm. The lift is the depth
+    # to the water table in the season's harvest year plus the drawdown caused by the
+    # season's own pumping, cumulative irrigation / (1000 x specific yield) metres, so every
+    # further irrigation costs more (300 mm at Sy 0.12 adds 2.5 m).
+    depth_m: 25.0                # ASSUMED depth to water in depth_year (central Punjab)
+    depth_year: 2024
+    decline_m_per_year: 0.5       # project brief (Punjab). Cross-check: Rodell, Velicogna & Famiglietti
+                                  # 2009, Nature 460:999-1002 give 4 cm/yr of water over NW India,
+                                  # i.e. 0.33 m/yr of water table at a specific yield of 0.12
+    min_depth_m: 3.0
+    specific_yield: 0.12          # ASSUMED, alluvial aquifer (groundwater-estimation norms: about 0.08-0.16)
+    pump_efficiency: 0.35         # ASSUMED overall efficiency of a farm pump set
+    energy_price_per_kwh: 6.0     # ASSUMED cost of supplying a unit of farm power, INR
+  waterlogging:
+    enabled: true
+    # A fortnight's rain and irrigation first refill the top 0.3 m (as full as the root zone
+    # as a whole); what that layer cannot hold stands in it and drains slowly, and while it
+    # stands the roots lack air. Aeration stress follows FAO Irrigation and Drainage
+    # Paper 66 / AquaCrop (Steduto, Hsiao, Fereres & Raes 2012): none up to the anaerobiosis
+    # point (5 vol% below saturation for wheat), complete at saturation. With 15 vol% of
+    # drainable pores (loam: saturation 46, field capacity 31 vol%) the top 0.3 m takes
+    # 30 mm above field capacity before stress starts and is saturated at 45 mm.
+    # Yield loss: FAO Irrigation and Drainage Paper 33 (Doorenbos & Kassam 1979),
+    # 1 - Y/Ym = Ky (1 - ETa/ETm) for each growth period, with ETa/ETm lowered by the mean
+    # aeration stress of the period and the spring-wheat Ky of that period.
+    drain_mm_per_day: 20.0        # ASSUMED. Not measured: chosen so that the standard calendar of four
+                                  # 75 mm irrigations loses about 5% of its yield (5 mm/day gave 20%,
+                                  # which farms on that calendar do not report)
+    top_layer_mm: 45.0            # plant-available water of the top 0.3 m at 15 vol%
+    aeration_buffer_mm: 30.0
+    saturation_mm: 45.0
+    period_of_step: [0, 0, 0, 0, 0, 0, 0, 1, 1, 2, 2, 3]   # ASSUMED crop calendar for sowing on 1 Nov
+    ky_period: [0.2, 0.65, 0.55, 0.0]                      # vegetative, flowering, yield formation, ripening
+  pest_resistance:
+    enabled: true
+    # Each spray leaves the next one (1 - efficacy_decay) times as effective: the survivors
+    # are the less susceptible ones. Repeating one mode of action is what IRAC and FRAC
+    # warn against; the Punjab wheat example is Phalaris minor and isoproturon (Malik &
+    # Singh 1995, Weed Technology 9:419-425). The within-season size is ASSUMED.
+    efficacy_decay: 0.25
+  storage:
+    enabled: true
+    # A fourth action, read at harvest: sell now at the season price, or store 1-2 months.
+    # Stored grain sells at  P x exp(monthly_drift x m + x_m - x_0), where x is the log
+    # deviation of the price from its trend: each month it reverts by mean_reversion and
+    # gets a N(0, monthly_volatility) shock. Storing costs a charge per quintal and month,
+    # interest on the harvest value and a share of the grain. All numbers are ASSUMED.
+    max_months: 2
+    monthly_drift: 0.01           # lean-season rise of the open-market price, per month
+    mean_reversion: 0.3           # share of the harvest-time deviation from trend undone per month
+    monthly_volatility: 0.03
+    cost_per_quintal_month: 10.0  # INR, warehouse charge
+    loss_per_month: 0.003         # grain lost in store (ICAR-CIPHET, Jha et al. 2015: under 1% in all)
+    interest_per_month: 0.0058    # 7% a year on the money tied up (crop-loan rate)
 
 yield_fit:
   assumed_irrigation_mm: 300.0  # irrigation depth of a fully irrigated crop (ICRISAT has area, not depth)
   min_area_kha: 10.0            # district-years with less wheat area are left out of the panel
   holdout_from: 2015            # panel years from here on are held out to score the fit
+
+baselines:
+  tune: true                    # grid-search the rule baselines on the training seasons (farmrl.tuning)
+  objective: reward             # what the search maximises: "reward" (as PPO does) or "profit"
+  seeds: 3                      # replicates per training season and candidate
+  max_rounds: 4                 # passes over the nitrogen / water / pests / sale blocks
 
 train:
   total_timesteps: 200000
