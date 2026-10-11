@@ -37,6 +37,7 @@ def toy_weather(seasons=(2016, 2017), steps=12):
 def tiny_run(tmp_path_factory):
     cfg = load_config(ROOT / "configs/default.yaml")
     cfg["train"].update(n_steps=96, batch_size=32, epochs=2)
+    cfg["baselines"].update(seeds=1, max_rounds=1)
     cfg["compute"] = {"torch_threads": 1, "parallel_seeds": 1}      # in-process: keeps the fixture fast
     out = run_experiment(cfg, run_name="tiny", seeds=2, train_seeds=2, timesteps=192, with_sensitivity=True,
                          runs_dir=tmp_path_factory.mktemp("runs"), weather=toy_weather(),
@@ -51,7 +52,8 @@ def test_rollout_schema():
     df = rollout.run_episode(env, BASELINES["recommended"], season=2017, seed=1, policy_name="recommended")
     need = {"season", "step", "date", "policy", "seed", "soil_moisture", "soil_n", "pest", "price", "rain_mm",
             "nitrogen_kg", "irrigation_mm", "pesticide_level", "input_cost", "penalty", "reward", "cum_profit",
-            "crop_growth", "final_yield", "final_revenue", "final_profit", *[f"obs_{k}" for k in OBS_NAMES]}
+            "crop_growth", "final_yield", "final_revenue", "final_profit", *[f"obs_{k}" for k in env.obs_names],
+            "store_months", "pumping_cost", "aeration_stress", "spray_efficacy", "final_sale_price"}
     assert need <= set(df.columns) and len(df) == env.T
     assert df["step"].tolist() == list(range(env.T)) and df["date"].is_monotonic_increasing
     assert set(df["nitrogen_kg"]) <= set(env.n_levels) and set(df["irrigation_mm"]) <= set(env.w_levels)
@@ -76,16 +78,56 @@ def test_run_many_and_tables():
 def test_run_directory_is_complete(tiny_run):
     for name in ["rollouts.parquet", "episodes.csv", "summary.csv", "train_history.csv", "model.pt",
                  "config_snapshot.yaml", "metadata.json", "policy_grids.parquet", "state_medians.csv",
-                 "fitted_params.yaml", "sensitivity.csv"]:
+                 "fitted_params.yaml", "sensitivity.csv", "baseline_tuning.json", "seed_episodes.csv",
+                 "seed_summary.csv", "attribution.csv", "dry_wet.csv", "models/seed_42.pt", "models/seed_43.pt"]:
         assert (tiny_run.path / name).exists(), name
     meta = tiny_run.meta
     assert meta["train_seasons"] == [2016] and meta["test_seasons"] == [2017] and len(meta["train_seeds"]) == 2
-    assert set(BASELINES) | {"ppo", "ppo_untrained"} == set(meta["policies"])      # baselines are discovered
+    tuned = {"recommended_tuned", "threshold_tuned"}
+    assert set(BASELINES) | tuned | {"ppo", "ppo_untrained"} == set(meta["policies"])      # baselines are discovered
+    assert set(meta["tuned_policies"]) == tuned and meta["reference_policy"] in tuned
+    assert all(meta["mechanisms"].values()) and meta["action_heads"] == [3, 3, 3, 3]
     assert "ppo_untrained" not in tiny_run.policies() and "ppo_untrained" in tiny_run.policies(include_aux=True)
     assert {"train_seed", "iteration", "mean_return", "policy_loss", "value_loss", "entropy", "kl"} <= set(tiny_run.history)
     assert set(tiny_run.rollouts["split"]) == {"train", "test"}
     assert set(tiny_run.grids["grid"]) == {"soil_moisture", "soil_n"}
     assert runs.list_runs(tiny_run.path.parent) == ["tiny"] and runs.get(None, tiny_run.path.parent).name == "tiny"
+
+
+def test_robustness_tables(tiny_run):
+    seeds = tiny_run.seed_summary
+    assert sorted(seeds["train_seed"].unique()) == [42, 43] and set(seeds["split"]) == {"train", "test"}
+    first = seeds[(seeds["train_seed"] == 42) & (seeds["split"] == "test")]["profit"].iloc[0]
+    shown = tiny_run.summary[(tiny_run.summary["policy"] == "ppo") & (tiny_run.summary["split"] == "test")]["profit"].iloc[0]
+    assert first == pytest.approx(shown)                           # the seed shown in detail is the first one
+    a = tiny_run.attribution
+    assert set(a["decision"]) == {"nitrogen", "water", "pests", "sale"} and set(a["baseline_policy"]) == set(tiny_run.meta["tuned_policies"]) | {"recommended", "threshold"}
+    for _, d in a.groupby(["train_seed", "baseline_policy"]):
+        assert d["contribution"].sum() == pytest.approx(d["gain"].iloc[0])
+    one = a[(a["train_seed"] == 42) & (a["baseline_policy"] == "threshold_tuned")].iloc[0]
+    tuned = tiny_run.summary[(tiny_run.summary["policy"] == "threshold_tuned") & (tiny_run.summary["split"] == "test")]
+    assert one["agent"] == pytest.approx(shown) and one["baseline"] == pytest.approx(tuned["profit"].iloc[0])
+    for rec in tiny_run.tuning.values():
+        assert rec["train_seasons"] == [2016] and rec["train_score"] >= rec["default_train_score"]
+    d = tiny_run.dry_wet
+    assert set(d["season_type"]) <= {"dry", "wet"} and d[d["policy"] == "ppo"]["profit_seed_std"].notna().all()
+    s = tiny_run.sensitivity
+    assert set(s["multiplier"]) == {0.8, 1.0, 1.2} and {"price", "costs", "yield model", "mechanisms"} <= set(s["group"])
+    assert {"y_max", "n_coef", "ky", "nitrogen_cost", "price"} <= set(s["factor"])
+
+
+def test_related_runs_are_found_by_name(tiny_run, tmp_path):
+    import shutil
+    shutil.copytree(tiny_run.path, tmp_path / "tiny")
+    shutil.copytree(tiny_run.path, tmp_path / "tiny_haryana")
+    shutil.copytree(tiny_run.path, tmp_path / "other")
+    main = runs.get("tiny", tmp_path)
+    assert [r.name for r in runs.related(main)] == ["tiny_haryana"]
+    fig = figures.region_comparison(main)
+    assert len(fig.axes) == 2
+    plt.close(fig)
+    assert isinstance(interactive.compare_runs([main, *runs.related(main)]), go.Figure)
+    assert len(interactive.compare_runs_table([main, *runs.related(main)])) == 2
 
 
 def test_parallel_training_matches_serial(tiny_run):
@@ -179,22 +221,29 @@ def test_interactive_charts(tiny_run):
               interactive.policy_heatmap(tiny_run, "soil_moisture", "expected_irrigation_mm"),
               interactive.learning_curve(tiny_run), interactive.diagnostics(tiny_run),
               interactive.profit_by_season(tiny_run, pol), interactive.dry_wet(tiny_run, pol),
-              interactive.rain_response(tiny_run, pol), interactive.sensitivity(tiny_run, pol)]
+              interactive.rain_response(tiny_run, pol), interactive.sensitivity(tiny_run, pol),
+              interactive.sensitivity(tiny_run, pol, "yield model"), interactive.sensitivity_gain(tiny_run),
+              interactive.dry_wet(tiny_run, pol, "test"), interactive.seed_profit(tiny_run, pol),
+              interactive.attribution(tiny_run), interactive.attribution(tiny_run, "recommended_tuned")]
     assert all(isinstance(c, go.Figure) and c.data for c in charts)
+    assert len(interactive.seed_table(tiny_run)) == 4 and len(interactive.attribution_table(tiny_run)) == 4
+    assert len(interactive.dry_wet_table(tiny_run, pol)) == len(pol) and len(interactive.sensitivity_table(tiny_run)) > 20
     k = interactive.headline(tiny_run)
-    assert k["baseline"] == "recommended" and np.isfinite(k["profit_gain"])
+    assert k["baseline"] == tiny_run.reference_policy and np.isfinite(k["profit_gain"]) and k["random_share"] is not None
     assert len(interactive.summary_table(tiny_run)) == len(pol)
 
 
 def test_live_simulation_matches_saved_schema(tiny_run):
     agent = live.load_agent(tiny_run)
-    steps = live.simulate(tiny_run, agent, 2017, ["ppo", "recommended"], price=1.2, irrigation_cost=3.0)
-    assert set(steps) == {"ppo", "recommended"} and set(tiny_run.rollouts.columns) - {"split"} <= set(steps["ppo"].columns)
+    steps = live.simulate(tiny_run, agent, 2017, ["ppo", "recommended", "threshold_tuned"], price=1.2, irrigation_cost=3.0)
+    assert set(steps) == {"ppo", "recommended", "threshold_tuned"}
+    assert set(tiny_run.rollouts.columns) - {"split"} <= set(steps["ppo"].columns)
     assert steps["recommended"]["price"].iloc[0] == pytest.approx(1.2 * live.make_env(tiny_run).price_index.get(2017, 1.0)
                                                                   * tiny_run.config["env"]["base_price"])
     fig = interactive.season_player(steps)
     assert len(fig.frames) == len(steps["ppo"])
     dist = live.action_distribution(tiny_run, agent, {k: 0.5 for k in OBS_NAMES})
+    assert list(dist) == ["nitrogen_kg", "irrigation_mm", "pesticide_level", "store_months"]
     assert all(p.sum() == pytest.approx(1.0, abs=1e-5) for _, p in dist.values())
 
 
