@@ -12,7 +12,8 @@ run, policies = common.setup("Overview")
 st.title("🌾 FarmRL: learning when to fertilise, irrigate and spray")
 st.markdown(
     "A farmer decides every fortnight how much **nitrogen**, **irrigation** and **pesticide** to "
-    "apply to a crop without knowing the rest of the season's weather. FarmRL trains a "
+    "apply to a crop without knowing the rest of the season's weather, and at harvest whether to "
+    "**sell or store** the grain. FarmRL trains a "
     "reinforcement-learning agent (PPO) on replayed historical seasons and compares it with "
     "rule-based practice on seasons it has never seen.")
 
@@ -27,8 +28,10 @@ else:
     c3.metric("Nitrogen change", f"{k['nitrogen_change_kg']:+,.0f} kg/ha", f"{k['nitrogen_change_pct']:+.0f}% vs {base}",
               delta_color="inverse")
     c4.metric("Yield change", f"{k['yield_gain']:+.1f} q/ha", f"vs {base}", delta_color="off")
-    st.caption(f"Means over the {k['seasons']} held-out seasons. Results come from a simulator calibrated on limited data; "
-               "see the Data page for what is and is not fitted.")
+    note = "" if k["random_share"] is None else f" A random policy earns {k['random_share']:.0f}% of PPO's profit."
+    st.caption(f"Means over the {k['seasons']} held-out seasons, first training seed.{note} Results come from a "
+               "simulator calibrated on limited data; see the Data page for what is and is not fitted and the "
+               "Robustness page for training seeds, sensitivity and where the gain comes from.")
 
 left, right = st.columns([3, 2])
 with left:
@@ -52,6 +55,9 @@ with a:
     st.latex(rf"n_t \in \{{{', '.join(f'{v:g}' for v in env['nitrogen_levels'])}\}}\ \text{{kg N/ha}},\quad "
              rf"w_t \in \{{{', '.join(f'{v:g}' for v in env['irrigation_levels'])}\}}\ \text{{mm}},\quad "
              rf"q_t \in \{{{', '.join(f'{v:g}' for v in env['pesticide_levels'])}\}}")
+    if len(run.meta.get("action_heads", [])) > 3:
+        st.markdown(f"plus, at harvest, the months to store the grain: 0 to {run.meta['action_heads'][3] - 1}. "
+                    f"The state also carries {', '.join(n.replace('_', ' ') for n in run.meta['obs_names'][11:])}.")
 with b:
     st.markdown("**Reward** (input costs and environmental penalties each step, the harvest at the end)")
     st.latex(r"r_t = -\big[c_N n_t + c_W w_t + c_P q_t\big] - \big[\lambda_N \max(0, N^{soil}_{t+1} - N_{safe}) + \lambda_P q_t + \lambda_W w_t\big] + \mathbb{1}[t = T-1]\,(Y P - F)")
@@ -59,6 +65,29 @@ with b:
     st.latex(r"Y = y_{max}\big[1 - e^{-\beta_N (N + N_0)}\big]\Big[1 - \beta_W \max\big(0, \tfrac{W - W^*}{100}\big)^2\Big]\big[1 - K_y(1 - \rho_T)\big]\big[1 - L\,D_{pest}\big]")
     ym = run.meta["yield_model"]
     st.caption(f"Parameters used in this run: y_max {ym['y_max'] * ym.get('y_scale', 1):.1f} q/ha, β_N {ym['n_coef']:.4f}, "
-               f"W* {ym['w_opt']:.0f} mm, β_W {ym['w_excess']:.3f}, K_y {ym['ky']}, L {ym['pest_loss']}.")
+               f"W* {ym['w_opt']:.0f} mm, β_W {ym['w_excess']:.3f}, K_y {ym['ky']:.3f}, L {ym['pest_loss']}.")
+
+on = [name for name, flag in (run.meta.get("mechanisms") or {}).items() if flag]
+if on:
+    st.header("What makes the decisions matter")
+    st.markdown("Mechanisms switched on in this run's config (each has its own `enabled` flag; sources and "
+                "assumptions are next to the numbers in the config):")
+    text = {
+        "groundwater": ("**Groundwater.** Pumping costs the energy to lift the water: "
+                        "{energy_price_per_kwh:g} INR/kWh at {pump_efficiency:.0%} pump efficiency from a water table "
+                        "{depth_m:g} m deep in {depth_year} and {decline_m_per_year:g} m shallower for every year before; "
+                        "the lift grows through the season with what has been pumped."),
+        "waterlogging": ("**Waterlogging.** Water the topsoil cannot hold stands there (draining {drain_mm_per_day:g} "
+                         "mm/day); beyond {aeration_buffer_mm:g} mm the roots lack air and yield falls by the FAO-33 "
+                         "factor of the growth period (flowering {ky_period[1]}, grain filling {ky_period[2]})."),
+        "pest_resistance": ("**Pest resistance.** Each spray leaves the next one "
+                            "{efficacy_decay:.0%} less effective, so sprays have to be saved for when they count."),
+        "storage": ("**Sale timing.** At harvest the grain is sold or stored up to {max_months} months: the price "
+                    "drifts up {monthly_drift:.0%} a month, reverts to its trend and moves randomly "
+                    "(±{monthly_volatility:.0%}); storing costs {cost_per_quintal_month:g} INR/quintal a month, "
+                    "interest and {loss_per_month:.1%} of the grain."),
+    }
+    for name in on:
+        st.markdown("- " + text[name].format(**env[name]) if name in text else f"- {name}")
 st.caption("Use the pages in the sidebar: simulate a season live, explore the learned policy, "
            "inspect training, robustness, the district map and the underlying data.")

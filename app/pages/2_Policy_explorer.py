@@ -44,10 +44,11 @@ ranges = {"soil_moisture": ("Soil moisture (% of capacity)", 100, 100), "soil_n"
           "pest": ("Pest pressure (%)", 100, 100), "cum_rain": ("Rain so far (mm)", 200, 300),
           "cum_n": ("Nitrogen applied so far (kg/ha)", 200, 300), "cum_water": ("Rain + irrigation so far (mm)", 500, 800),
           "price_index": ("Price relative to base (%)", 100, 150), "last_rain": ("Rain last fortnight (mm)", 50, 120),
-          "last_et0": ("Reference ET last fortnight (mm)", 100, 120), "et_ratio": ("Water demand met so far (%)", 100, 100)}
+          "last_et0": ("Reference ET last fortnight (mm)", 100, 120), "et_ratio": ("Water demand met so far (%)", 100, 100),
+          "pump_cost": ("Pumping cost of the next mm (INR)", 20, 30), "spray_efficacy": ("Spray efficacy left (%)", 100, 100)}
 state = {"stage": step / n_steps}
 cols = st.columns(2)
-for i, name in enumerate(k for k in OBS_NAMES if k != "stage"):
+for i, name in enumerate(k for k in run.meta.get("obs_names", OBS_NAMES) if k != "stage"):
     label, scale, top = ranges.get(name, (name, 1, 1))
     default = float(min(base[f"obs_{name}"] * scale, top))
     value = cols[i % 2].slider(label, 0.0, float(top), round(default, 1), key=f"{name}_{step}")
