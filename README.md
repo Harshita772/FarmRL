@@ -133,6 +133,7 @@ select stages (for example `--skip data experiments` only redraws the outputs):
 | `figures` | `python scripts/make_figures.py --run v1` | `results/runs/v1/figures/*.png` (300 dpi) and `*.pdf` |
 | `animation` | `python scripts/make_animation.py --run v1 --compare recommended --demo` | `results/runs/v1/animations/*.gif` (+ `.mp4` if ffmpeg is installed), `docs/demo.gif` |
 | `maps` | `python scripts/make_maps.py --run v1` | `results/runs/v1/maps/*.png`, `*.html` |
+| `card` | `python scripts/make_runcard.py --run v1` | `results/runs/v1/README.md` (run card), `params/`, `results/runs/INDEX.md` |
 
 The `data` stage rebuilds from `data/raw/` when the raw files are there; for any that are
 missing (a fresh clone has none) it reuses the table already in `data/processed/` and says
@@ -148,6 +149,25 @@ held-out seasons drier and wetter than the median (`dry_wet.csv`). A run named
 conda run -n TogAI python scripts/run_all.py --run-name v3_haryana --config configs/haryana.yaml --no-demo
 conda run -n TogAI python scripts/run_all.py --run-name v3
 ```
+
+### What a run folder contains
+
+Every run is kept in its own folder, `results/runs/<name>/`, and `results/runs/INDEX.md`
+lists all of them side by side (region, yield model, pesticide loss, mechanisms, seeds,
+PPO profit against the best other policy). Inside a run:
+
+| Path | Content |
+|---|---|
+| `README.md` | the run card: one-line label, held-out results, and the methods used (data, yield-model form and fit quality, simulator mechanisms and their settings, PPO hyperparameters and seeds, baselines and their tuning, what was evaluated), provenance and a file list |
+| `params/` | copies of every parameter file the run used: `config_snapshot.yaml`, `fitted_params.yaml`, `baseline_tuning.json`, `prices.csv` |
+| `code/` | the code that produced the run (`src/farmrl`, `scripts`, `configs`, `requirements.txt`) and `code/SNAPSHOT.md` with the commit and any uncommitted changes |
+| `figures/`, `animations/`, `maps/` | report figures (PNG 300 dpi + PDF), season GIFs, district maps |
+| `*.csv`, `*.parquet`, `model.pt`, `models/`, `metadata.json` | the tables, models and metadata the figures and dashboard read |
+
+New runs copy their code at the moment they start, so `code/` is exact. Runs made before
+that (`v1`, `v2`, `v3`, `v3_haryana`) were given a snapshot rebuilt from the nearest git
+commit afterwards; their `SNAPSHOT.md` says so and names the commit. Regenerate cards and
+the index with `python scripts/make_runcard.py --all`.
 
 **After adding new datasets** to `data/raw/`, rebuild under a new name; nothing is hardcoded
 to the current files, regions or numbers, and the dashboard lists the new run automatically:
