@@ -1,0 +1,13 @@
+params:
+  y_max: 49.82029383518054
+  n_coef: 0.020839550299222492
+  w_opt: 400.0
+  w_excess: 0.0
+  pest_loss: 0.35
+  soil_n: 30.0
+  ky: 0.7065201360875861
+  y_scale: 1.1151709155776304
+  heat_coef: 0.00233718454254169
+  k_dry: 0.39229838131505834
+  r0: 1000000.0
+source: copied from configs/fitted_params.yaml
