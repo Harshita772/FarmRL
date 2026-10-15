@@ -3,10 +3,10 @@ params:
   n_coef: 0.020839550299222492
   w_opt: 400.0
   w_excess: 0.0
-  pest_loss: 0.11508671294395167
+  pest_loss: 0.11508672626908367
   soil_n: 30.0
   ky: 0.7065201360875861
-  y_scale: 1.1234712221048235
+  y_scale: 1.1234712247324155
   heat_coef: 0.00233718454254169
   k_dry: 0.39229838131505834
   r0: 1000000.0
@@ -99,14 +99,14 @@ fit:
     status: calibrated
     method: nonlinear least squares of log yield on a year trend, temperature and
       log(1 - L exp(-1 x)); k fixed
-    pest_loss: 0.11508671294395167
+    pest_loss: 0.11508672626908367
     previous_value: 0.35
-    estimate: 0.11508671294395167
-    std_err: 0.08410814964590627
-    t_ratio: 1.3683182120693962
+    estimate: 0.11508672626908367
+    std_err: 0.0841081512940005
+    t_ratio: 1.3683183436858266
     interval_90:
     - 0.0
-    - 0.2534446191114675
+    - 0.2534446351477145
     k_fixed: 1.0
     n_obs: 24
     years:
@@ -118,8 +118,8 @@ fit:
     controls_dropped_no_variation:
     - rainfall
     pesticide_measure: index (national tonnage / series mean)
-    r2_controls_only: 0.8271885353374794
-    r2_with_pesticide: 0.8403503104294159
+    r2_controls_only: 0.8271885353374789
+    r2_with_pesticide: 0.8403503104294183
     quality_note: 'weak: the estimate is 1.4 standard errors from zero, so it cannot
       be told apart from no effect; adding it raises R2 of log-yield only from 0.827
       to 0.840'
@@ -142,5 +142,5 @@ fit:
       pooled_rmse_test: 4.963420899536607
   ky_calibrated: true
   form: pooled
-  y_scale: 1.1234712221048235
+  y_scale: 1.1234712247324155
   pest_loss_status: calibrated
