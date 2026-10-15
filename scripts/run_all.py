@@ -12,13 +12,14 @@ Stages, in order (each is a script that can also be run on its own):
     figures      scripts/make_figures.py     report figures (PNG + PDF)
     animation    scripts/make_animation.py   season GIF, copied to docs/demo.gif
     maps         scripts/make_maps.py        district choropleth (PNG + HTML)
+    card         scripts/make_runcard.py     run card README.md, params/ copies, results/runs/INDEX.md
 A failing stage stops the pipeline; later stages only read what earlier ones saved, so
 the pipeline can be resumed with --skip.
 """
 import sys, argparse, subprocess, time
 from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
-STAGES = ["data", "experiments", "figures", "animation", "maps"]
+STAGES = ["data", "experiments", "figures", "animation", "maps", "card"]
 
 p = argparse.ArgumentParser(description=__doc__.splitlines()[0], formatter_class=argparse.RawDescriptionHelpFormatter,
                             epilog=__doc__.split("\n\n", 1)[1])
@@ -45,6 +46,7 @@ commands = {
     "figures": ["make_figures.py", "--run", a.run_name],
     "animation": ["make_animation.py", "--run", a.run_name, "--compare", a.compare] + ([] if a.no_demo else ["--demo"]),
     "maps": ["make_maps.py", "--run", a.run_name],
+    "card": ["make_runcard.py", "--run", a.run_name],
 }
 todo = [s for s in STAGES if s not in a.skip and (a.only is None or s in a.only)]
 for stage in todo:

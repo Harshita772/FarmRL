@@ -18,6 +18,7 @@
     sensitivity.csv         optional: test-season results with one input scaled by +-20%
     prices.csv              the season price index the environment used
     config_snapshot.yaml, fitted_params.yaml, metadata.json
+    code/                   snapshot of src/farmrl, scripts, configs and requirements.txt (runcard.py)
 """
 import copy
 import itertools
@@ -35,7 +36,7 @@ import torch
 import yaml
 
 from . import data_loader as dl
-from . import rollout, tuning
+from . import rollout, runcard, tuning
 from .agents.ppo import PPO
 from .baselines import BASELINES, FAMILIES, TUNED_SUFFIX, tuned_policies
 from .env import FarmEnv, OBS_NAMES, scale_config
@@ -304,6 +305,7 @@ def run_experiment(cfg, run_name=None, seeds=None, train_seeds=1, timesteps=None
     run_name = run_name or created.strftime("run_%Y%m%d_%H%M%S")
     out = Path(runs_dir or RUNS_DIR) / run_name
     out.mkdir(parents=True, exist_ok=True)
+    runcard.snapshot_code(out)                # the exact code of this run, before anything can change it
     seeds = seeds or (QUICK["seeds"] if quick else cfg["eval"]["seeds_per_season"])
     timesteps = timesteps or (QUICK["timesteps"] if quick else cfg["train"]["total_timesteps"])
     ym = yield_model or YieldModel.from_config(ROOT / cfg["env"]["fitted_params"])
@@ -406,7 +408,7 @@ def run_experiment(cfg, run_name=None, seeds=None, train_seeds=1, timesteps=None
     fitted = ROOT / cfg["env"]["fitted_params"]
     meta = {
         "run_name": run_name, "created": created.isoformat(timespec="seconds"),
-        "git_hash": _git_hash(), "quick": bool(quick), "timesteps": int(timesteps),
+        "git_hash": _git_hash(), "git_dirty": runcard.git_state()["dirty"], "quick": bool(quick), "timesteps": int(timesteps),
         "train_seeds": [] if history is None else sorted(int(s) for s in history["train_seed"].unique()),
         "loaded_model": str(load_model) if load_model else None,
         "rollout_seeds": int(seeds), "policies": list(policies), "aux_policies": AUX_POLICIES,
