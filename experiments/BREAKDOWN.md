@@ -1,4 +1,4 @@
-# FarmRL, explained from the ground up: the problem, the 11 studies, and what they taught us
+# FarmRL, explained from the ground up: the problem, the 12 studies, and what they taught us
 
 This document is a guided tour. Part 1 explains the problem and the vocabulary from scratch, Part 2 walks through every experiment (what it asks, how it is built, what came out, what it means), Part 3 puts all the numbers in one table, and Part 4 says honestly which experiments actually improved the model and by how much. Every number comes from the result files in this folder (`results_all.csv`, `results_followup.csv`, and each study's `README.md`); nothing is typed from memory.
 
@@ -104,7 +104,7 @@ The first complete run (v4) had **PPO about 0.7% below the tuned rule**. That ra
 | **Q1.** Is PPO underperforming, or is the rule simply already near the best possible? | 1 |
 | **Q2.** Can a better learner or a better set-up close the gap? (optimiser fixes, action layout, other algorithms, no critic) | 2, 3, 4, 9, 11 |
 | **Q3.** Under which conditions does RL actually beat the rule? | 5, 6, 8 |
-| **Q4.** What information would make the agent better? | 7, 10 |
+| **Q4.** What information would make the agent better? | 7, 10, 12 |
 
 ### 1.8 Glossary
 
@@ -321,6 +321,22 @@ Each study answers one question. For each: what it tests, how it was set up, the
 - **Reading it:** the best configuration, **4-level grid with the joint head**, is the best no-foresight PPO so far: +622 over the best study-2 agent (+0.7%) and +235 over the finer grid alone. The 6-level grid is slightly worse with the joint head, but with ordinary heads it has the **most stable** training (std 69 across seeds). No configuration beats the standard-grid rule (87,232). The combination is a small, real gain, not a breakthrough.
 - **What it changed:** it fixed our recommended action layout (4-level water grid, joint nitrogen × water head).
 
+#### Study 12: the best layout together with a rain forecast
+
+- **What it tests:** whether the two improvements that each helped on their own, the 4-level water grid with the joint head (study 9) and the rain forecast (study 7), **add up** or **overlap**.
+- **Setup:** improved PPO with the 4-level grid, the joint head and the forecast at noise 0, 10 and 25 mm, 5 seeds each; the rule tuning of study 9 is reused and the oracle recomputed in each forecast environment.
+- **Result** (held-out profit, INR/ha):
+
+| Forecast | Standard grid, separate heads (studies 2, 7) | 4-level grid + joint head (studies 9, 12) | Layout effect | Forecast effect on the layout agent | Std over seeds (layout) |
+|---|---|---|---|---|---|
+| None | 86,200 ± 542 | 86,821 ± 315 | +621 | n/a | 315 |
+| 25 mm | 86,979 ± 258 | 87,405 ± 611 | +426 | +584 | 611 |
+| 10 mm | 87,972 ± 412 | **88,508 ± 81** | +536 | +1,686 | **81** |
+| Perfect | 88,689 ± 295 | 88,635 ± 317 | −54 | +1,813 | 317 |
+
+- **Reading it:** the two improvements are **partly additive**. At a realistic 10 mm forecast error the layout adds +536 on top of the forecast, almost exactly what the two separate gains predict (+1,772 and +621 over 86,200 would give 88,593), and training becomes much steadier (std 81, down from 412). With a poor 25 mm forecast the layout still adds +426. With a **perfect** forecast it adds nothing (−54, inside the noise): once the agent knows next fortnight's rain, the finer water grid has nothing left to fix. Against the *standard-grid* rule in the same environment (87,385) the layout agents are +1,250 (perfect), +1,123 (10 mm) and +20 (25 mm) ahead; against their own (handicapped) rule they are ahead in 5, 5 and 4 of 5 seeds.
+- **What it changed:** it identifies the **best model we have: improved PPO with a 4-level water grid, the joint head and a rain forecast** (88,508 ± 81 at a 10 mm forecast error, 98.9% of the oracle).
+
 ---
 
 ## 3. All results in one table
@@ -355,6 +371,9 @@ Held-out profit (INR/ha), mean ± std over 5 training seeds. "Gap" and "% of ora
 | 11 | GRPO, group 8, episode advantage | 86,117 ± 189 | -1,115 | 96.1% | 0 of 5 | 208 · 232 · 0.14 |
 | 11 | GRPO, group 16, episode advantage | 86,223 ± 680 | -1,009 | 96.2% | 0 of 5 | 205 · 232 · 0.01 |
 | 11 | GRPO, group 8, per-step advantage | 85,482 ± 449 | -1,750 | 95.3% | 0 of 5 | 223 · 236 · 2.17 |
+| 12 | layout + forecast noise 0 mm (perfect) | 88,635 ± 317 | +2,090 | 99.1% | 5 of 5 | 196 · 211 · 0.00 |
+| 12 | layout + forecast noise 10 mm | 88,508 ± 81 | +1,963 | 98.9% | 5 of 5 | 193 · 212 · 0.00 |
+| 12 | layout + forecast noise 25 mm | 87,405 ± 611 | +861 | 97.7% | 4 of 5 | 199 · 227 · 0.00 |
 
 ![Summary of studies 1 to 5](summary.png)
 
@@ -376,11 +395,12 @@ Honest ledger: what each study changed, how big the effect was, and our verdict.
 | 7 | **Add a rain forecast to the observation** | **+2,489 (+2.9%) perfect; +1,772 at 10 mm; +779 at 25 mm** | **Biggest gain**: beats the rule from 10 mm noise down to perfect |
 | 10 | Find which information matters | Weather worth +5,367, price +188 | **Directed the work**: forecast weather, not price |
 | 5, 6 | Raise pest cost | PPO beats the tuned rule by 2.6k to 3.8k from pest_loss 0.3 | Shows **where RL wins**: selective spraying under costly pests |
-| 8 | Transfer, climate and price shifts | PPO ≈ rule (±0.5%) in most scenarios; −1.2k under price volatility | Model is **robust**, not obviously more adaptive; weakness identified (price variability) |
+| 8 | Transfer, climate and price shifts | PPO ≈ rule (±0.6%) in most scenarios; −1.2k under price volatility | Model is **robust**, not obviously more adaptive; weakness identified (price variability) |
+| 12 | **Best layout + forecast** | **88,508 ± 81 at 10 mm** (+536 over the forecast alone; +0 at a perfect forecast) | **Best realistic model**: gains are partly additive, training is steadiest |
 
 **Where this leaves the model.** Under the calibrated settings with no foresight, the best agent is the **improved PPO with a 4-level water grid and a joint head: 86,822 ± 315**, about 0.5% below the standard tuned rule (87,232), a gap that no optimiser or algorithm change closed. The two things that *did* move the result are different in kind: **giving the agent weather information** (88,689 with a perfect next-fortnight rain forecast, +1,304 over the rule; 87,972 with a 10 mm-error forecast) and **making pests costly enough that adaptive spraying matters** (+2.6k to +3.8k over the rule).
 
-**An experiment we have not run:** combining the best layout (4-level grid + joint head) with a 10 mm forecast. Each helps separately; whether they add up is untested.
+**Combining them (study 12):** the best layout with a realistic 10 mm forecast gives **88,508 ± 81**, 98.9% of its oracle and +1,123 over the standard-grid rule, with the steadiest training of any configuration. The gains are partly additive: the layout adds +536 on top of the forecast at 10 mm, and nothing at a perfect forecast.
 
 ---
 
@@ -390,7 +410,7 @@ Honest ledger: what each study changed, how big the effect was, and our verdict.
 
 - The tuned threshold rule is within about 2.7% of what a foresight oracle earns, so the room for improvement over it, for any policy, is small at the calibrated settings.
 - PPO's shortfall to the rule is consistent (0 of 5 seeds ahead in all eight plain configurations: the original, the six improved/sweep ones and the joint head) and is not fixed by optimiser changes, a critic-free variant, or a joint head.
-- Weather information is what is valuable; price information is not. A short-range rain forecast raises PPO's profit by up to 2.9%.
+- Weather information is what is valuable; price information is not. A short-range rain forecast raises PPO's profit by up to 2.9%, and the better action layout adds to a realistic forecast (88,508 ± 81 at 10 mm error) but not to a perfect one.
 - When pest losses are 0.3 or more, PPO beats the tuned rule in all 5 seeds, by 3 to 4.5%, by spraying selectively.
 
 **Do not over-claim**
@@ -416,7 +436,7 @@ Honest ledger: what each study changed, how big the effect was, and our verdict.
 | One-row-per-run index | `experiments/INDEX.md` |
 | Combined result tables | `experiments/results_all.csv`, `experiments/results_followup.csv` |
 | Code the experiments used (self-contained copy) | `experiments/code/` |
-| Drivers | `run_all_studies.sh` (studies 1 to 5), `run_parallel_all.sh` (studies 6 to 11; `run_followup_studies.sh` and `run_grpo_study.sh` are the sequential versions, superseded) |
+| Drivers | `run_all_studies.sh` (studies 1 to 5), `run_parallel_all.sh` (studies 6 to 11; `run_layout_forecast.sh` is study 12; `run_followup_studies.sh` and `run_grpo_study.sh` are the sequential versions, superseded) |
 
 | Study | Folder |
 |---|---|
@@ -431,5 +451,6 @@ Honest ledger: what each study changed, how big the effect was, and our verdict.
 | 9 Combined action settings | `09_combined_action_settings` |
 | 10 Oracle information breakdown | `10_oracle_information_breakdown` |
 | 11 GRPO vs PPO | `11_grpo_vs_ppo` |
+| 12 Layout + forecast | `12_layout_plus_forecast` |
 
-To rerun on the server: `bash experiments/run_all_studies.sh` (about 8 hours, studies 1 to 5), then `bash experiments/run_parallel_all.sh` (about 1.5 hours with all runs in parallel on a 32-core machine; the GRPO runs and the timing probe are part of it). Runs that already finished are skipped, so an interrupted run can be restarted.
+To rerun on the server: `bash experiments/run_all_studies.sh` (about 8 hours, studies 1 to 5), then `bash experiments/run_parallel_all.sh` (about 1.5 hours with all runs in parallel on a 32-core machine; the GRPO runs and the timing probe are part of it), then `bash experiments/run_layout_forecast.sh` (study 12, about 1 hour). Runs that already finished are skipped, so an interrupted run can be restarted.

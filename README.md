@@ -116,7 +116,7 @@ with the v4 card; the oracle is a heuristic search and so a lower bound on the t
 foresight optimum. Reproduce with `bash experiments/run_all_studies.sh` (about 8 hours on 4
 processes).
 
-#### Follow-up studies 6–11
+#### Follow-up studies 6–12
 
 A guided explanation of the whole project, from the problem to every study and what each one
 taught us, is in [`experiments/BREAKDOWN.md`](experiments/BREAKDOWN.md); every run is listed in
@@ -130,11 +130,12 @@ taught us, is in [`experiments/BREAKDOWN.md`](experiments/BREAKDOWN.md); every r
 | 9 Combined action settings | Do a finer water grid and the joint head add up? | 4-level grid + joint head **86,822 ± 315** (+0.7% over the best study-2 agent, 5 of 5 seeds ahead of its own rule, 410 below the standard-grid rule); 6-level grid with separate heads 86,708 ± 69 (most stable) |
 | 10 Oracle information | Is the remaining headroom weather or price? | Knowing the weather is worth +5,367 INR/ha over the best fixed plan, knowing the price +188 |
 | 11 GRPO vs PPO | Is PPO's critic needed? | No: critic-free GRPO scores 86,117 ± 189 (group 8) and 86,223 ± 680 (group 16) against PPO's 86,200 ± 542; the per-step variant is worse (85,482) and over-sprays; training is about 6% faster without a critic |
+| 12 Layout + forecast | Do the best layout and the rain forecast add up? | Partly: 4-level grid + joint head + a 10 mm forecast gives **88,508 ± 81** (98.9% of its oracle, +1,123 over the standard-grid rule, steadiest training of any configuration); the layout adds +536 on top of a 10 mm forecast, +426 at 25 mm and nothing at a perfect one (88,635 vs 88,689) |
 
 The GRPO agent (`experiments/code/src/farmrl/agents/grpo.py`) is written from scratch: the PPO
 policy network without a value head, advantages from a group of episodes in the same season.
 Studies 6–11 ran in parallel with `bash experiments/run_parallel_all.sh` (about 1.5 hours on a
-32-core machine); `run_followup_studies.sh` and `run_grpo_study.sh` are the sequential versions.
+32-core machine) and study 12 with `bash experiments/run_layout_forecast.sh` (about 1 hour); `run_followup_studies.sh` and `run_grpo_study.sh` are the sequential versions.
 Absolute profits are not comparable across pest-loss rows or between the forecast and no-forecast
 environments (see the breakdown's caveats).
 
