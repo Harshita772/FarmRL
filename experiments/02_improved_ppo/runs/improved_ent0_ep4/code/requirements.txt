@@ -1,0 +1,23 @@
+numpy
+pandas
+scipy
+scikit-learn
+gymnasium
+torch
+matplotlib
+pyyaml
+tqdm
+pytest
+requests
+lxml
+jupyter
+ipykernel
+kaggle
+openpyxl
+# visualisation layer
+pyarrow
+pillow
+plotly
+streamlit
+rapidfuzz
+tensorboard

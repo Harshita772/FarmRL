@@ -1,0 +1,5 @@
+reusing the tuned rule baselines of /DATA/Aurindum/FarmRL/experiments/01_oracle_bound/runs/baseline_v4_oracle/baseline_tuning.json
+training PPO seeds [42, 43, 44, 45, 46] for 1000000 steps each (4 processes, 1 torch thread each)
+rolling out ['ppo', 'no_input', 'random', 'recommended', 'threshold', 'recommended_tuned', 'threshold_tuned', 'ppo_untrained'] with 30 seeds per season
+evaluating 5 PPO training seeds and attributing the gain
+run saved to /DATA/Aurindum/FarmRL/experiments/02_improved_ppo/runs/improved_ent0_ep10
