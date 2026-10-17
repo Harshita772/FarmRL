@@ -1,0 +1,28 @@
+# Wheat, Haryana: break-up of cost of cultivation (Rs per hectare); yield in quintal/ha.
+# Source: Commission for Agricultural Costs & Prices (CACP), "Price Policy for Rabi Crops:
+# Marketing Season 2027-28" (July 2026), Annex Table 5.6(a), report page 184
+# ("CACP calculations using CS data"). https://cacp.da.gov.in/Home/latestRabiReports
+# Transcribed by hand from the scanned PDF (data/raw/cacp_rabi_price_policy_latest.pdf).
+item,group,2022-23,2023-24,2024-25
+operational_cost,total,40657,41821,42741
+human_labour_casual,operational,2500,2538,2641
+human_labour_attached,operational,206,208,209
+human_labour_family,operational,6716,6776,6801
+bullock_labour,operational,5,0,0
+machine_labour_hired,operational,12491,12896,13346
+machine_labour_owned,operational,2871,3065,3175
+seed,operational,3462,3621,3767
+fertilisers,operational,5149,5353,5471
+manure,operational,0,0,0
+insecticides,operational,1737,1775,1846
+irrigation_charges,operational,4313,4345,4212
+crop_insurance,operational,55,57,56
+interest_on_working_capital,operational,1029,1062,1089
+miscellaneous,operational,123,125,127
+fixed_cost,total,35788,41271,43789
+rental_value_of_owned_land,fixed,29737,35036,37319
+rent_paid_for_leased_in_land,fixed,136,142,148
+land_revenue_cesses_taxes,fixed,0,0,0
+depreciation,fixed,656,688,710
+interest_on_fixed_capital,fixed,5259,5404,5612
+yield_q_per_ha,yield,46.7,47.1,48.1

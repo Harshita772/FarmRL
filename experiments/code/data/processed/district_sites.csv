@@ -1,0 +1,221 @@
+dist_code,state,district,matched,geo_name,match_score,lat,lon
+1,Chhattisgarh,Durg,True,Durg,100.0,21.203,81.368
+3,Chhattisgarh,Raipur,True,Raipur,100.0,21.315,81.787
+4,Chhattisgarh,Bilaspur,True,Bilaspur,100.0,22.317,82.071
+6,Chhattisgarh,Surguja,True,Surguja,100.0,22.981,83.14
+7,Madhya Pradesh,Jabalpur,True,Jabalpur,100.0,23.249,80.062
+8,Madhya Pradesh,Balaghat,True,Balaghat,100.0,21.799,80.541
+9,Madhya Pradesh,Chhindwara,True,Chhindwara,100.0,22.188,78.772
+10,Madhya Pradesh,Narsinghpur,True,Narsimhapur,100.0,22.944,79.046
+11,Madhya Pradesh,Seoni / Shivani,True,Seoni,100.0,22.316,79.625
+12,Madhya Pradesh,Mandla,True,Mandla,100.0,22.658,80.486
+13,Madhya Pradesh,Sagar,True,Sagar,100.0,23.771,78.836
+14,Madhya Pradesh,Damoh,True,Damoh,100.0,23.846,79.491
+15,Madhya Pradesh,Tikamgarh,True,Tikamgarh,100.0,24.919,79.006
+16,Madhya Pradesh,Chhatarpur,True,Chhatarpur,100.0,24.755,79.57
+17,Madhya Pradesh,Panna,True,Panna,100.0,24.396,80.225
+18,Madhya Pradesh,Rewa,True,Rewa,100.0,24.813,81.652
+19,Madhya Pradesh,Sidhi,True,Sidhi,100.0,24.194,81.874
+20,Madhya Pradesh,Satna,True,Satna,100.0,24.561,80.741
+21,Madhya Pradesh,Shahdol,True,Shahdol,100.0,23.584,81.521
+22,Madhya Pradesh,Gwalior,True,Gwalior,100.0,26.043,78.155
+23,Madhya Pradesh,Shivpuri,True,Shivpuri,100.0,25.389,77.769
+24,Madhya Pradesh,Guna,True,Guna,100.0,24.442,77.238
+25,Madhya Pradesh,Datia,True,Datia,100.0,25.894,78.624
+26,Madhya Pradesh,Morena,True,Morena,100.0,26.356,77.911
+27,Madhya Pradesh,Bhind,True,Bhind,100.0,26.352,78.705
+28,Madhya Pradesh,Indore,True,Indore,100.0,22.686,75.845
+29,Madhya Pradesh,Ratlam,True,Ratlam,100.0,23.495,75.153
+30,Madhya Pradesh,Ujjain,True,Ujjain,100.0,23.421,75.786
+31,Madhya Pradesh,Mandsaur,True,Mandsaur,100.0,24.224,75.423
+32,Madhya Pradesh,Dewas,True,Dewas,100.0,22.817,76.441
+33,Madhya Pradesh,Dhar,True,Dhar,100.0,22.558,75.121
+34,Madhya Pradesh,Jhabua,True,Jhabua,100.0,22.894,74.68
+35,Madhya Pradesh,Khargone / West Nimar,True,Khargone (West Nimar),90.47619047619048,21.986,75.787
+36,Madhya Pradesh,Khandwa / East Nimar,True,Khandwa (East Nimar),90.0,21.979,76.563
+37,Madhya Pradesh,Sehore,True,Sehore,100.0,22.973,77.107
+38,Madhya Pradesh,Raisen,True,Raisen,100.0,23.323,78.117
+39,Madhya Pradesh,Vidisha,True,Vidisha,100.0,23.862,77.813
+40,Madhya Pradesh,Betul,True,Betul,100.0,21.916,77.924
+41,Madhya Pradesh,Rajgarh,True,Rajgarh,100.0,23.886,76.55
+42,Madhya Pradesh,Shajapur,True,Shajapur,100.0,23.416,76.499
+43,Madhya Pradesh,Hoshangabad,True,Hoshangabad,100.0,22.586,78.107
+71,Karnataka,Chickmagalur,True,Chikmagalur,95.65217391304348,13.428,75.717
+74,Karnataka,Dharwad,True,Dharwad,100.0,15.335,75.153
+75,Karnataka,Belgaum,True,Belgaum,100.0,16.151,74.72
+76,Karnataka,Bijapur / Vijayapura,True,Bijapur,100.0,16.859,75.987
+77,Karnataka,Bidar,True,Bidar,100.0,17.956,77.221
+78,Karnataka,Raichur,True,Raichur,100.0,16.06,76.894
+79,Karnataka,Gulbarga / Kalaburagi,True,Gulbarga,100.0,17.192,76.913
+82,Karnataka,Kodagu / Coorg,True,Kodagu,100.0,12.406,75.785
+99,Maharashtra,Nasik,True,Nashik,90.9090909090909,20.268,74.044
+100,Maharashtra,Dhule,True,Dhule,100.0,21.083,74.575
+101,Maharashtra,Jalgaon,True,Jalgaon,100.0,20.88,75.484
+102,Maharashtra,Ahmednagar,True,Ahmadnagar,100.0,19.185,74.75
+103,Maharashtra,Pune,True,Pune,100.0,18.522,74.109
+104,Maharashtra,Satara,True,Satara,100.0,17.681,74.176
+105,Maharashtra,Sangli,True,Sangli,100.0,17.142,74.751
+106,Maharashtra,Solapur,True,Solapur,100.0,17.802,75.388
+107,Maharashtra,Kolhapur,True,Kolhapur,100.0,16.466,74.131
+108,Maharashtra,Aurangabad,True,Aurangabad,100.0,20.05,75.271
+109,Maharashtra,Parbhani,True,Parbhani,100.0,19.298,76.729
+110,Maharashtra,Beed,True,Bid,100.0,18.964,75.701
+111,Maharashtra,Nanded,True,Nanded,100.0,19.179,77.686
+112,Maharashtra,Osmanabad,True,Osmanabad,100.0,18.188,76.013
+113,Maharashtra,Buldhana,True,Buldana,100.0,20.503,76.4
+114,Maharashtra,Akola,True,Akola,100.0,20.738,77.075
+115,Maharashtra,Amarawati,True,Amravati,82.35294117647058,21.167,77.687
+116,Maharashtra,Yeotmal,True,Yavatmal,100.0,20.03,78.056
+117,Maharashtra,Wardha,True,Wardha,100.0,20.805,78.597
+118,Maharashtra,Nagpur,True,Nagpur,100.0,21.247,79.058
+119,Maharashtra,Bhandara,True,Bhandara,100.0,21.168,79.752
+120,Maharashtra,Chandrapur,True,Chandrapur,100.0,20.105,79.334
+121,Gujarat,Ahmedabad,True,Ahmadabad,100.0,22.813,72.238
+122,Gujarat,Amreli,True,Amreli,100.0,21.43,71.256
+123,Gujarat,Banaskantha,True,Banas Kantha,100.0,24.263,71.945
+124,Gujarat,Bharuch,True,Bharuch,100.0,21.758,72.938
+125,Gujarat,Vadodara / Baroda,True,Vadodara,100.0,22.238,73.245
+126,Gujarat,Bhavnagar,True,Bhavnagar,100.0,21.495,71.792
+129,Gujarat,Jamnagar,True,Jamnagar,100.0,22.325,70.151
+130,Gujarat,Junagadh,True,Junagadh,100.0,21.375,70.46
+131,Gujarat,Kheda,True,Kheda,100.0,22.808,72.91
+132,Gujarat,Kutch,True,Kachchh,100.0,23.615,70.265
+133,Gujarat,Mehsana,True,Mahesana,100.0,23.535,72.421
+134,Gujarat,Panchmahal,True,Panch Mahals,100.0,22.706,73.634
+135,Gujarat,Rajkot,True,Rajkot,100.0,22.079,70.788
+136,Gujarat,Sabarkantha,True,Sabar Kantha,100.0,23.782,73.072
+137,Gujarat,Surat,True,Surat,100.0,21.229,73.075
+138,Gujarat,Surendranagar,True,Surendranagar,100.0,22.793,71.59
+139,Rajasthan,Ajmer,True,Ajmer,100.0,26.241,74.777
+140,Rajasthan,Alwar,True,Alwar,100.0,27.65,76.662
+141,Rajasthan,Banswara,True,Banswara,100.0,23.451,74.431
+142,Rajasthan,Barmer,True,Barmer,100.0,25.806,71.679
+143,Rajasthan,Bharatpur,True,Bharatpur,100.0,27.325,77.247
+144,Rajasthan,Bhilwara,True,Bhilwara,100.0,25.437,74.653
+145,Rajasthan,Bikaner,True,Bikaner,100.0,28.056,73.384
+146,Rajasthan,Bundi,True,Bundi,100.0,25.511,75.844
+147,Rajasthan,Chittorgarh,True,Chittaurgarh,100.0,24.826,74.653
+148,Rajasthan,Churu,True,Churu,100.0,28.311,74.772
+149,Rajasthan,Dungarpur,True,Dungarpur,100.0,23.739,73.838
+150,Rajasthan,Ganganagar,True,Ganganagar,100.0,29.284,73.756
+151,Rajasthan,Jaipur,True,Jaipur,100.0,27.058,75.76
+152,Rajasthan,Jaisalmer,True,Jaisalmer,100.0,26.875,71.389
+153,Rajasthan,Jalore,True,Jalor,100.0,25.104,72.218
+154,Rajasthan,Jhalawar,True,Jhalawar,100.0,24.224,76.105
+155,Rajasthan,Jhunjhunu,True,Jhunjhunun,100.0,28.156,75.632
+156,Rajasthan,Jodhpur,True,Jodhpur,100.0,26.743,72.88
+157,Rajasthan,Kota,True,Kota,100.0,25.111,76.179
+158,Rajasthan,Nagaur,True,Nagaur,100.0,27.094,74.216
+159,Rajasthan,Pali,True,Pali,100.0,25.752,73.531
+160,Rajasthan,Swami Madhopur,True,Sawai Madhopur,100.0,26.196,76.372
+161,Rajasthan,Sikar,True,Sikar,100.0,27.642,75.33
+162,Rajasthan,Sirohi,True,Sirohi,100.0,24.811,72.761
+163,Rajasthan,Tonk,True,Tonk,100.0,26.121,75.763
+164,Rajasthan,Udaipur,True,Udaipur,100.0,24.383,73.731
+165,Punjab,Gurdaspur,True,Gurdaspur,100.0,31.963,75.278
+166,Punjab,Amritsar,True,Amritsar,100.0,31.688,74.878
+167,Punjab,Kapurthala,True,Kapurthala,100.0,31.359,75.321
+168,Punjab,Jalandhar,True,Jalandhar,100.0,31.25,75.542
+169,Punjab,Hoshiarpur,True,Hoshiarpur,100.0,31.538,75.886
+170,Punjab,Roopnagar / Ropar,True,Rupnagar,100.0,31.066,76.497
+171,Punjab,Ludhiana,True,Ludhiana,100.0,30.768,75.85
+172,Punjab,Ferozpur,True,Firozpur,100.0,30.953,74.758
+174,Punjab,Bhatinda,True,Bathinda,100.0,30.179,75.08
+175,Punjab,Sangrur,True,Sangrur,100.0,30.243,75.869
+176,Punjab,Patiala,True,Patiala,100.0,30.276,76.345
+177,Haryana,Hissar,True,Hisar,100.0,29.221,75.77
+180,Haryana,Gurgaon,True,Gurgaon,100.0,28.36,76.935
+181,Haryana,Jind,True,Jind,100.0,29.455,76.321
+182,Haryana,Mahendragarh / Narnaul,True,Mahendragarh,100.0,28.218,76.12
+183,Haryana,Ambala,True,Ambala,100.0,30.324,76.949
+184,Haryana,Karnal,True,Karnal,100.0,29.714,76.91
+186,Haryana,Rohtak,True,Rohtak,100.0,28.872,76.521
+189,Uttar Pradesh,Saharanpur,True,Saharanpur,100.0,29.955,77.567
+190,Uttar Pradesh,Muzaffarnagar,True,Muzaffarnagar,100.0,29.432,77.725
+191,Uttar Pradesh,Meerut,True,Meerut,100.0,29.017,77.797
+192,Uttar Pradesh,Buland Shahar,True,Bulandshahr,83.33333333333334,28.29,77.99
+194,Uttar Pradesh,Aligarh,True,Aligarh,100.0,27.916,77.979
+195,Uttar Pradesh,Mathura,True,Mathura,100.0,27.589,77.635
+196,Uttar Pradesh,Agra,True,Agra,100.0,27.032,78.066
+197,Uttar Pradesh,Mainpuri,True,Mainpuri,100.0,27.186,79.067
+198,Uttar Pradesh,Etah,True,Etah,100.0,27.499,78.684
+199,Uttar Pradesh,Bareilly,True,Bareilly,100.0,28.49,79.446
+200,Uttar Pradesh,Budaun,True,Budaun,100.0,28.069,79.042
+201,Uttar Pradesh,Moradabad,True,Moradabad,100.0,28.916,78.778
+202,Uttar Pradesh,Shahjahanpur,True,Shahjahanpur,100.0,27.94,79.812
+203,Uttar Pradesh,Pilibhit,True,Pilibhit,100.0,28.567,79.905
+204,Uttar Pradesh,Rampur,True,Rampur,100.0,28.852,79.154
+205,Uttar Pradesh,Bijnor,True,Bijnor,100.0,29.352,78.458
+206,Uttar Pradesh,Farrukhabad,True,Farrukhabad,100.0,27.45,79.451
+207,Uttar Pradesh,Etawah,True,Etawah,100.0,26.73,79.081
+208,Uttar Pradesh,Kanpur,True,Kanpur Nagar,100.0,26.444,80.143
+209,Uttar Pradesh,Fatehpur,True,Fatehpur,100.0,25.838,80.853
+210,Uttar Pradesh,Allahabad,True,Allahabad,100.0,25.287,81.92
+211,Uttar Pradesh,Jhansi,True,Jhansi,100.0,25.424,78.901
+213,Uttar Pradesh,Jalaun,True,Jalaun,100.0,26.078,79.359
+214,Uttar Pradesh,Hamirpur,True,Hamirpur,100.0,25.755,79.835
+215,Uttar Pradesh,Banda,True,Banda,100.0,25.286,80.515
+216,Uttar Pradesh,Varanasi,True,Varanasi,100.0,25.378,82.897
+217,Uttar Pradesh,Mirzpur,True,Mirzapur,93.33333333333333,24.931,82.532
+218,Uttar Pradesh,Jaunpur,True,Jaunpur,100.0,25.766,82.587
+219,Uttar Pradesh,Ghazipur,True,Ghazipur,100.0,25.634,83.556
+220,Uttar Pradesh,Ballia,True,Ballia,100.0,25.845,84.055
+221,Uttar Pradesh,Gorakhpur,True,Gorakhpur,100.0,26.682,83.337
+222,Uttar Pradesh,Deoria,True,Deoria,100.0,26.418,83.841
+223,Uttar Pradesh,Basti,True,Basti,100.0,26.838,82.65
+224,Uttar Pradesh,Azamgarh,True,Azamgarh,100.0,26.037,83.073
+225,Uttar Pradesh,Lucknow,True,Lucknow,100.0,26.842,80.9
+226,Uttar Pradesh,Unnao,True,Unnao,100.0,26.641,80.636
+227,Uttar Pradesh,Rae-Bareily,True,Rae Bareli,100.0,26.216,81.224
+228,Uttar Pradesh,Sitapur,True,Sitapur,100.0,27.5,80.876
+229,Uttar Pradesh,Hardoi,True,Hardoi,100.0,27.316,80.263
+230,Uttar Pradesh,Kheri,True,Kheri,100.0,28.081,80.663
+231,Uttar Pradesh,Faizabad,True,Faizabad,100.0,26.634,81.936
+232,Uttar Pradesh,Gonda,True,Gonda,100.0,27.122,82.045
+233,Uttar Pradesh,Bahraich,True,Bahraich,100.0,27.624,81.561
+234,Uttar Pradesh,Sultanpur,True,Sultanpur,100.0,26.246,82.263
+235,Uttar Pradesh,Pratapgarh,True,Pratapgarh,100.0,25.889,81.85
+236,Uttar Pradesh,Barabanki,True,Bara Banki,100.0,26.944,81.337
+237,Uttarakhand,Nainital,True,Nainital,100.0,29.308,79.548
+238,Uttarakhand,Almorah,True,Almora,92.3076923076923,29.648,79.629
+239,Uttarakhand,Pithorgarh,True,Pithoragarh,95.23809523809523,30.11,80.14
+240,Uttarakhand,Chamoli,True,Chamoli,100.0,30.529,79.781
+241,Uttarakhand,Uttar Kashi,True,Uttarkashi,85.71428571428572,30.932,78.549
+242,Uttarakhand,Tehri Garhwal,True,Tehri Garhwal,100.0,30.461,78.452
+243,Uttarakhand,Garhwal,True,Garhwal,100.0,29.942,78.819
+244,Uttarakhand,Dehradun,True,Dehradun,100.0,30.486,77.968
+602,Assam,Darrang,True,Darrang,100.0,26.485,92.087
+604,Assam,Goalpara,True,Goalpara,100.0,26.023,90.614
+605,Assam,Kamrup,True,Kamrup,100.0,26.132,91.426
+609,Assam,Nagaon,True,Nagaon,100.0,26.349,92.86
+626,Himachal Pradesh,Bilashpur,True,Bilaspur,94.11764705882352,31.373,76.667
+627,Himachal Pradesh,Chamba,True,Chamba,100.0,32.664,76.389
+629,Himachal Pradesh,Kangra,True,Kangra,100.0,32.132,76.434
+631,Himachal Pradesh,Kullu,True,Kullu,100.0,31.906,77.438
+633,Himachal Pradesh,Solan,True,Solan,100.0,31.012,76.942
+634,Himachal Pradesh,Mandi,True,Mandi,100.0,31.632,76.979
+635,Himachal Pradesh,Shimla,True,Shimla,100.0,31.176,77.661
+636,Himachal Pradesh,Sirmaur,True,Sirmaur,100.0,30.625,77.423
+800,West Bengal,24 Parganas,True,North Twenty Four Parganas,100.0,22.756,88.766
+803,West Bengal,Nadia,True,Nadia,100.0,23.522,88.535
+804,West Bengal,Murshidabad,True,Murshidabad,100.0,24.186,88.118
+806,West Bengal,Birbhum,True,Birbhum,100.0,23.99,87.644
+812,West Bengal,Jalpaiguri,True,Jalpaiguri,100.0,26.635,88.782
+814,West Bengal,Malda,True,Maldah,100.0,25.153,88.174
+816,West Bengal,Cooch Behar,True,Koch Bihar,100.0,26.274,89.332
+822,West Bengal,West Dinajpur,True,Uttar Dinajpur,100.0,25.927,88.163
+901,Bihar,Champaran,True,Purba Champaran,100.0,26.636,84.972
+902,Bihar,Muzaffarpur,True,Muzaffarpur,100.0,26.197,85.332
+903,Bihar,Darbhanga,True,Darbhanga,100.0,26.09,86.045
+904,Bihar,Saharsa,True,Saharsa,100.0,25.838,86.559
+905,Bihar,Purnea,True,Purnia,100.0,25.813,87.451
+906,Bihar,Saran,True,Saran,100.0,25.909,84.798
+907,Bihar,Patna,True,Patna,100.0,25.413,85.277
+908,Bihar,Mungair,True,Munger,100.0,25.191,86.528
+909,Bihar,Bhagalpur,True,Bhagalpur,100.0,25.286,87.031
+910,Jharkhand,Santhal Paragana / Dumka,True,Dumka,100.0,24.282,87.272
+911,Bihar,Shahabad (now part of Bhojpur district),True,Bhojpur,100.0,25.494,84.509
+912,Bihar,Gaya,True,Gaya,100.0,24.712,84.908
+913,Jharkhand,Hazaribagh,True,Hazaribagh,100.0,23.995,85.502
+915,Jharkhand,Palamau,True,Palamu,100.0,24.198,84.248
+916,Jharkhand,Ranchi,True,Ranchi,100.0,23.259,85.365
