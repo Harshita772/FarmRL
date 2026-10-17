@@ -1,0 +1,436 @@
+{
+  "run_name": "baseline_v4_oracle",
+  "created": "2026-10-17T01:16:11",
+  "algo": "ppo",
+  "variant": null,
+  "overrides": [],
+  "yield_overrides": {},
+  "oracle": true,
+  "lean": true,
+  "git_hash": "dfb4354fee43033ff5b432da43c2a1756b4f7b7c",
+  "git_dirty": true,
+  "quick": false,
+  "timesteps": 200000,
+  "train_seeds": [
+    42,
+    43,
+    44,
+    45,
+    46
+  ],
+  "loaded_model": null,
+  "rollout_seeds": 30,
+  "policies": [
+    "ppo",
+    "no_input",
+    "random",
+    "recommended",
+    "threshold",
+    "recommended_tuned",
+    "threshold_tuned",
+    "ppo_untrained",
+    "oracle"
+  ],
+  "aux_policies": [
+    "ppo_untrained"
+  ],
+  "tuned_policies": [
+    "recommended_tuned",
+    "threshold_tuned"
+  ],
+  "reference_policy": "threshold_tuned",
+  "mechanisms": {
+    "groundwater": true,
+    "waterlogging": true,
+    "pest_resistance": true,
+    "storage": true
+  },
+  "obs_names": [
+    "stage",
+    "soil_moisture",
+    "soil_n",
+    "pest",
+    "cum_rain",
+    "cum_n",
+    "cum_water",
+    "price_index",
+    "last_rain",
+    "last_et0",
+    "et_ratio",
+    "pump_cost",
+    "spray_efficacy"
+  ],
+  "action_heads": [
+    3,
+    3,
+    3,
+    3
+  ],
+  "compute": {
+    "torch_threads": 1,
+    "parallel_seeds": 4
+  },
+  "region": "punjab",
+  "weather_site": "ludhiana",
+  "train_seasons": [
+    1985,
+    1986,
+    1987,
+    1988,
+    1989,
+    1990,
+    1991,
+    1992,
+    1993,
+    1994,
+    1995,
+    1996,
+    1997,
+    1998,
+    1999,
+    2000,
+    2001,
+    2002,
+    2003,
+    2004,
+    2005,
+    2006,
+    2007,
+    2008,
+    2009,
+    2010,
+    2011,
+    2012,
+    2013,
+    2014,
+    2015,
+    2016
+  ],
+  "test_seasons": [
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023
+  ],
+  "yield_model": {
+    "y_max": 49.82029383518054,
+    "n_coef": 0.020839550299222492,
+    "w_opt": 400.0,
+    "w_excess": 0.0,
+    "pest_loss": 0.11508672626908367,
+    "soil_n": 30.0,
+    "ky": 0.7065201360875861,
+    "y_scale": 1.1234712247324155,
+    "heat_coef": 0.00233718454254169,
+    "k_dry": 0.39229838131505834,
+    "r0": 1000000.0
+  },
+  "yield_fit": {
+    "model": "pooled panel with state fixed effects",
+    "n_obs": 1719,
+    "n_states": 13,
+    "n_districts": 206,
+    "years": [
+      2008,
+      2017
+    ],
+    "r2": 0.6859090689151628,
+    "rmse": 6.020243784059744,
+    "region": "Punjab",
+    "region_in_panel": true,
+    "assumed_irrigation_mm": 300.0,
+    "mean_observed_yield": 46.349296363636356,
+    "n_range_kg_ha": [
+      0.97,
+      466.66
+    ],
+    "identified": {
+      "n_coef": true,
+      "k_dry": true,
+      "r0": false,
+      "w_excess": false,
+      "r_opt": false,
+      "heat_coef": true,
+      "y_max": true
+    },
+    "std_err": {
+      "n_coef": 0.0011279584704454173,
+      "k_dry": 0.04155901881194942,
+      "heat_coef": 0.0005759266817397292
+    },
+    "first_pass": {
+      "n_coef": {
+        "estimate": 0.01938418538156829,
+        "std_err": 0.001011642504715214
+      },
+      "k_dry": {
+        "estimate": 0.4699565529771059,
+        "std_err": 0.05468776676429014
+      },
+      "r0": {
+        "estimate": 629.6546881079252,
+        "std_err": 427.8563197824565
+      },
+      "w_excess": {
+        "estimate": 0.04782909491939263,
+        "std_err": 0.010531753784368013
+      },
+      "r_opt": {
+        "estimate": 1.5851160964388514e-10,
+        "std_err": 29.634307119490792
+      },
+      "heat_coef": {
+        "estimate": 0.005690202244261079,
+        "std_err": 0.0005965275020112061
+      }
+    },
+    "r_opt_mm": 100.0,
+    "state_effects": {
+      "Bihar": 29.063345110648456,
+      "Chhattisgarh": 19.6874133819786,
+      "Gujarat": 35.51830272590685,
+      "Haryana": 49.24764535211329,
+      "Himachal Pradesh": 27.68030086825854,
+      "Jharkhand": 19.914517564770573,
+      "Karnataka": 17.435176160885682,
+      "Madhya Pradesh": 38.69743161234618,
+      "Maharashtra": 20.03914832067989,
+      "Punjab": 49.82029383518054,
+      "Rajasthan": 42.92678286826264,
+      "Uttar Pradesh": 34.83619600955816,
+      "Uttarakhand": 36.316132924774564
+    },
+    "holdout": {
+      "from_year": 2015,
+      "n_train": 1248,
+      "n_test": 471,
+      "r2_train": 0.7069963983496079,
+      "r2_test": 0.5120976710721772,
+      "rmse_test": 7.275295223857106,
+      "r2_test_state_means_only": 0.3999212472220752,
+      "within_state_skill": 0.18693617017900954,
+      "by_state": {
+        "Bihar": -0.4078547361125622,
+        "Gujarat": -0.019205525073174856,
+        "Haryana": -1.0256846217891757,
+        "Himachal Pradesh": -0.196988214550728,
+        "Karnataka": 0.3565905393914083,
+        "Madhya Pradesh": -1.2285573296620496,
+        "Punjab": -1.0555763930254645,
+        "Rajasthan": 0.29808161377593057,
+        "Uttar Pradesh": -0.0848937701654553,
+        "Uttarakhand": 0.8198018362147419
+      }
+    },
+    "pesticide": {
+      "status": "calibrated",
+      "method": "nonlinear least squares of log yield on a year trend, temperature and log(1 - L exp(-1 x)); k fixed",
+      "pest_loss": 0.11508672626908367,
+      "previous_value": 0.35,
+      "estimate": 0.11508672626908367,
+      "std_err": 0.0841081512940005,
+      "t_ratio": 1.3683183436858266,
+      "interval_90": [
+        0.0,
+        0.2534446351477145
+      ],
+      "k_fixed": 1.0,
+      "n_obs": 24,
+      "years": [
+        1990,
+        2013
+      ],
+      "controls": [
+        "year",
+        "temperature"
+      ],
+      "controls_dropped_no_variation": [
+        "rainfall"
+      ],
+      "pesticide_measure": "index (national tonnage / series mean)",
+      "r2_controls_only": 0.8271885353374789,
+      "r2_with_pesticide": 0.8403503104294183,
+      "quality_note": "weak: the estimate is 1.4 standard errors from zero, so it cannot be told apart from no effect; adding it raises R2 of log-yield only from 0.827 to 0.840"
+    },
+    "comparison": {
+      "Haryana": {
+        "n_train": 49,
+        "n_test": 21,
+        "single_region_r2_train": 0.00010365567128234332,
+        "single_region_r2_test": -0.2570281630512852,
+        "single_region_rmse_test": 3.5110555580750495,
+        "pooled_r2_test": -1.0256846217891757,
+        "pooled_rmse_test": 4.457087019594295
+      },
+      "Punjab": {
+        "n_train": 77,
+        "n_test": 33,
+        "single_region_r2_train": 0.48917252577550474,
+        "single_region_r2_test": -0.5490447347351077,
+        "single_region_rmse_test": 4.308700174358211,
+        "pooled_r2_test": -1.0555763930254645,
+        "pooled_rmse_test": 4.963420899536607
+      }
+    },
+    "ky_calibrated": true,
+    "form": "pooled",
+    "y_scale": 1.1234712247324155,
+    "pest_loss_status": "calibrated"
+  },
+  "data_files": [
+    {
+      "path": "data/processed/cost_of_cultivation_wheat_haryana.csv",
+      "bytes": 2876,
+      "modified": "2026-10-17T01:10:23"
+    },
+    {
+      "path": "data/processed/cost_of_cultivation_wheat_punjab.csv",
+      "bytes": 2871,
+      "modified": "2026-10-17T01:10:23"
+    },
+    {
+      "path": "data/processed/district_sites.csv",
+      "bytes": 13105,
+      "modified": "2026-10-17T01:10:23"
+    },
+    {
+      "path": "data/processed/district_weather.csv",
+      "bytes": 111541,
+      "modified": "2026-10-17T01:10:23"
+    },
+    {
+      "path": "data/processed/fao_wheat_india.csv",
+      "bytes": 3696,
+      "modified": "2026-10-17T01:10:23"
+    },
+    {
+      "path": "data/processed/icrisat_wheat.csv",
+      "bytes": 235831,
+      "modified": "2026-10-17T01:10:23"
+    },
+    {
+      "path": "data/processed/weather_daily_ambala.csv",
+      "bytes": 961407,
+      "modified": "2026-10-17T01:10:23"
+    },
+    {
+      "path": "data/processed/weather_daily_gurgaon.csv",
+      "bytes": 960170,
+      "modified": "2026-10-17T01:10:23"
+    },
+    {
+      "path": "data/processed/weather_daily_hisar.csv",
+      "bytes": 959881,
+      "modified": "2026-10-17T01:10:23"
+    },
+    {
+      "path": "data/processed/weather_daily_jind.csv",
+      "bytes": 960215,
+      "modified": "2026-10-17T01:10:23"
+    },
+    {
+      "path": "data/processed/weather_daily_karnal.csv",
+      "bytes": 960347,
+      "modified": "2026-10-17T01:10:23"
+    },
+    {
+      "path": "data/processed/weather_daily_ludhiana.csv",
+      "bytes": 960283,
+      "modified": "2026-10-17T01:10:23"
+    },
+    {
+      "path": "data/processed/weather_daily_narnaul.csv",
+      "bytes": 960256,
+      "modified": "2026-10-17T01:10:23"
+    },
+    {
+      "path": "data/processed/weather_daily_rohtak.csv",
+      "bytes": 960188,
+      "modified": "2026-10-17T01:10:23"
+    },
+    {
+      "path": "data/processed/weather_fortnightly_ambala.csv",
+      "bytes": 31652,
+      "modified": "2026-10-17T01:10:23"
+    },
+    {
+      "path": "data/processed/weather_fortnightly_gurgaon.csv",
+      "bytes": 31573,
+      "modified": "2026-10-17T01:10:23"
+    },
+    {
+      "path": "data/processed/weather_fortnightly_hisar.csv",
+      "bytes": 31543,
+      "modified": "2026-10-17T01:10:23"
+    },
+    {
+      "path": "data/processed/weather_fortnightly_jind.csv",
+      "bytes": 31569,
+      "modified": "2026-10-17T01:10:23"
+    },
+    {
+      "path": "data/processed/weather_fortnightly_karnal.csv",
+      "bytes": 31588,
+      "modified": "2026-10-17T01:10:23"
+    },
+    {
+      "path": "data/processed/weather_fortnightly_ludhiana.csv",
+      "bytes": 31660,
+      "modified": "2026-10-17T01:10:23"
+    },
+    {
+      "path": "data/processed/weather_fortnightly_narnaul.csv",
+      "bytes": 31561,
+      "modified": "2026-10-17T01:10:23"
+    },
+    {
+      "path": "data/processed/weather_fortnightly_rohtak.csv",
+      "bytes": 31600,
+      "modified": "2026-10-17T01:10:23"
+    },
+    {
+      "path": "data/processed/wheat_msp.csv",
+      "bytes": 941,
+      "modified": "2026-10-17T01:10:23"
+    },
+    {
+      "path": "data/processed/wheat_prices.csv",
+      "bytes": 2050,
+      "modified": "2026-10-17T01:10:23"
+    },
+    {
+      "path": "data/processed/wheat_prices_haryana.csv",
+      "bytes": 2291,
+      "modified": "2026-10-17T01:10:23"
+    },
+    {
+      "path": "data/processed/wheat_prices_punjab.csv",
+      "bytes": 2346,
+      "modified": "2026-10-17T01:10:23"
+    },
+    {
+      "path": "data/processed/yield_fit_table.csv",
+      "bytes": 311038,
+      "modified": "2026-10-17T01:10:23"
+    },
+    {
+      "path": "data/reference/cacp_wheat_cost_haryana.csv",
+      "bytes": 1403,
+      "modified": "2026-10-17T01:10:23"
+    },
+    {
+      "path": "data/reference/cacp_wheat_cost_punjab.csv",
+      "bytes": 1397,
+      "modified": "2026-10-17T01:10:23"
+    }
+  ],
+  "versions": {
+    "python": "3.10.18",
+    "torch": "2.6.0+cu124",
+    "numpy": "2.2.5",
+    "pandas": "2.3.3"
+  }
+}
