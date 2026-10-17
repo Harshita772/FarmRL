@@ -116,6 +116,28 @@ with the v4 card; the oracle is a heuristic search and so a lower bound on the t
 foresight optimum. Reproduce with `bash experiments/run_all_studies.sh` (about 8 hours on 4
 processes).
 
+#### Follow-up studies 6–11
+
+A guided explanation of the whole project, from the problem to every study and what each one
+taught us, is in [`experiments/BREAKDOWN.md`](experiments/BREAKDOWN.md); every run is listed in
+[`experiments/INDEX.md`](experiments/INDEX.md).
+
+| Study | Question | Result (held-out profit, INR/ha, 5 seeds) |
+|---|---|---|
+| 6 Pest-loss sweep | When does PPO beat the tuned rule? | Rule wins at the calibrated 0.115 (−1,032); level at 0.2 (−159); **PPO wins in every seed from 0.3** (+2,601, +2,664, +3,827 at 0.5), because it sprays selectively (3.6 doses vs the rule's 6.3 at 0.35; the oracle uses 3.7). A finer spray grid finds the same rule |
+| 7 Rain forecast | Does a noisy next-fortnight rain forecast close the oracle gap? | PPO 86,979 / 87,972 / **88,689** at noise 25 / 10 / 0 mm, against 86,200 without (+0.9% / +2.1% / +2.9%); from 10 mm it beats the rule, at 0 mm it reaches 99.1% of the oracle |
+| 8 Transfer and shifts | Does one learned policy adapt better than a rule that must be retuned? | PPO trained in Punjab beats the rule in Haryana by +472 without retraining, and is within about ±0.6% of the best rule under +1 °C, +2 °C, 20% less rain and hot+dry, but loses 1,194 under 2× price volatility. The Punjab rule needs little retuning, so no adaptivity advantage is shown |
+| 9 Combined action settings | Do a finer water grid and the joint head add up? | 4-level grid + joint head **86,822 ± 315** (+0.7% over the best study-2 agent, 5 of 5 seeds ahead of its own rule, 410 below the standard-grid rule); 6-level grid with separate heads 86,708 ± 69 (most stable) |
+| 10 Oracle information | Is the remaining headroom weather or price? | Knowing the weather is worth +5,367 INR/ha over the best fixed plan, knowing the price +188 |
+| 11 GRPO vs PPO | Is PPO's critic needed? | No: critic-free GRPO scores 86,117 ± 189 (group 8) and 86,223 ± 680 (group 16) against PPO's 86,200 ± 542; the per-step variant is worse (85,482) and over-sprays; training is about 6% faster without a critic |
+
+The GRPO agent (`experiments/code/src/farmrl/agents/grpo.py`) is written from scratch: the PPO
+policy network without a value head, advantages from a group of episodes in the same season.
+Studies 6–11 ran in parallel with `bash experiments/run_parallel_all.sh` (about 1.5 hours on a
+32-core machine); `run_followup_studies.sh` and `run_grpo_study.sh` are the sequential versions.
+Absolute profits are not comparable across pest-loss rows or between the forecast and no-forecast
+environments (see the breakdown's caveats).
+
 ## Repository Structure
 
 ```text

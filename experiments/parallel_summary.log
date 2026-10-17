@@ -1,0 +1,23 @@
+/DATA/Aurindum/FarmRL/experiments/code/scripts/summarize_followup.py:110: RuntimeWarning: Mean of empty slice
+  m, sd = np.nanmean(curves, 0), np.nanstd(curves, 0)
+/DATA/Aurindum/conda/envs/RL/lib/python3.10/site-packages/numpy/lib/_nanfunctions_impl.py:2019: RuntimeWarning: Degrees of freedom <= 0 for slice.
+  var = nanvar(a, axis=axis, dtype=dtype, out=out, ddof=ddof,
+/DATA/Aurindum/FarmRL/experiments/code/scripts/summarize_followup.py:110: RuntimeWarning: Mean of empty slice
+  m, sd = np.nanmean(curves, 0), np.nanstd(curves, 0)
+/DATA/Aurindum/conda/envs/RL/lib/python3.10/site-packages/numpy/lib/_nanfunctions_impl.py:2019: RuntimeWarning: Degrees of freedom <= 0 for slice.
+  var = nanvar(a, axis=axis, dtype=dtype, out=out, ddof=ddof,
+/DATA/Aurindum/FarmRL/experiments/code/scripts/summarize_followup.py:110: RuntimeWarning: Mean of empty slice
+  m, sd = np.nanmean(curves, 0), np.nanstd(curves, 0)
+/DATA/Aurindum/conda/envs/RL/lib/python3.10/site-packages/numpy/lib/_nanfunctions_impl.py:2019: RuntimeWarning: Degrees of freedom <= 0 for slice.
+  var = nanvar(a, axis=axis, dtype=dtype, out=out, ddof=ddof,
+/DATA/Aurindum/FarmRL/experiments/code/scripts/summarize_followup.py:110: RuntimeWarning: Mean of empty slice
+  m, sd = np.nanmean(curves, 0), np.nanstd(curves, 0)
+/DATA/Aurindum/conda/envs/RL/lib/python3.10/site-packages/numpy/lib/_nanfunctions_impl.py:2019: RuntimeWarning: Degrees of freedom <= 0 for slice.
+  var = nanvar(a, axis=axis, dtype=dtype, out=out, ddof=ddof,
+/DATA/Aurindum/FarmRL/experiments/code/scripts/summarize_followup.py:233: FutureWarning: The behavior of DataFrame concatenation with empty or all-NA entries is deprecated. In a future version, this will no longer exclude empty or all-NA columns when determining the result dtypes. To retain the old behavior, exclude the relevant entries before the concat operation.
+  pd.concat(done, ignore_index=True).to_csv(exp / "results_followup.csv", index=False)
+06_pest_loss_sweep: 5 rows -> /DATA/Aurindum/FarmRL/experiments/06_pest_loss_sweep/README.md
+07_forecast_information: 4 rows -> /DATA/Aurindum/FarmRL/experiments/07_forecast_information/README.md
+09_combined_action_settings: 7 rows -> /DATA/Aurindum/FarmRL/experiments/09_combined_action_settings/README.md
+11_grpo_vs_ppo: 4 rows -> /DATA/Aurindum/FarmRL/experiments/11_grpo_vs_ppo/README.md
+index: 27 runs -> /DATA/Aurindum/FarmRL/experiments/INDEX.md

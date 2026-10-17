@@ -1,0 +1,43 @@
+[2026-10-17 14:18:01] parallel driver started (up to 16 runs at once); settings: --set train.ent_coef=0.003 --set train.epochs=10; study-2 best: /DATA/Aurindum/FarmRL/experiments/02_improved_ppo/runs/improved_ent0p003_ep10
+[2026-10-17 14:18:01] START 08_transfer_and_shift/haryana_native
+[2026-10-17 14:18:01] START 10_oracle_information_breakdown/breakdown
+[2026-10-17 14:18:01] skip  06_pest_loss_sweep/pest_0p115 (finished)
+[2026-10-17 14:18:01] START 06_pest_loss_sweep/pest_0p2
+[2026-10-17 14:18:01] START 06_pest_loss_sweep/pest_0p3
+[2026-10-17 14:18:01] START 06_pest_loss_sweep/pest_0p35
+[2026-10-17 14:18:01] START 06_pest_loss_sweep/pest_0p5
+[2026-10-17 14:18:01] START 09_combined_action_settings/fine4_joint
+[2026-10-17 14:18:01] START 09_combined_action_settings/fine6_joint
+[2026-10-17 14:18:01] START 09_combined_action_settings/fine6_factored
+[2026-10-17 14:18:01] START 07_forecast_information/forecast_sd0mm
+[2026-10-17 14:18:01] START 07_forecast_information/forecast_sd10mm
+[2026-10-17 14:18:01] START 07_forecast_information/forecast_sd25mm
+[2026-10-17 14:18:01] START 11_grpo_vs_ppo/grpo_g8
+[2026-10-17 14:18:01] START 11_grpo_vs_ppo/grpo_g16
+[2026-10-17 14:18:01] START 11_grpo_vs_ppo/grpo_g8_stepwise
+[2026-10-17 14:26:36] END   10_oracle_information_breakdown/breakdown rc=0
+[2026-10-17 15:27:05] END   11_grpo_vs_ppo/grpo_g8_stepwise rc=0
+[2026-10-17 15:27:35] END   11_grpo_vs_ppo/grpo_g8 rc=0
+[2026-10-17 15:30:52] END   09_combined_action_settings/fine4_joint rc=0
+[2026-10-17 15:31:10] END   09_combined_action_settings/fine6_joint rc=0
+[2026-10-17 15:31:38] END   11_grpo_vs_ppo/grpo_g16 rc=0
+[2026-10-17 15:32:54] END   07_forecast_information/forecast_sd25mm rc=0
+[2026-10-17 15:32:56] END   07_forecast_information/forecast_sd10mm rc=0
+[2026-10-17 15:33:07] END   07_forecast_information/forecast_sd0mm rc=0
+[2026-10-17 15:34:58] END   08_transfer_and_shift/haryana_native rc=0
+[2026-10-17 15:34:59] START 08_transfer_and_shift/transfer
+[2026-10-17 15:35:10] END   06_pest_loss_sweep/pest_0p3 rc=0
+[2026-10-17 15:35:37] END   06_pest_loss_sweep/pest_0p2 rc=0
+[2026-10-17 15:35:37] END   06_pest_loss_sweep/pest_0p5 rc=0
+[2026-10-17 15:35:40] END   06_pest_loss_sweep/pest_0p35 rc=0
+[2026-10-17 15:37:26] END   09_combined_action_settings/fine6_factored rc=0
+[2026-10-17 15:46:26] END   08_transfer_and_shift/transfer rc=0
+[2026-10-17 15:46:26] all runs finished
+[2026-10-17 15:46:26] START timing probe
+[2026-10-17 15:56:26] END   timing probe rc=0
+[2026-10-17 15:56:29] summary 06_pest_loss_sweep rc=0
+[2026-10-17 15:56:30] summary 09_combined_action_settings rc=0
+[2026-10-17 15:56:32] summary 07_forecast_information rc=0
+[2026-10-17 15:56:34] summary 08_transfer_and_shift rc=0
+[2026-10-17 15:56:36] summary 11_grpo_vs_ppo rc=0
+[2026-10-17 15:56:39] parallel driver finished

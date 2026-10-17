@@ -1,0 +1,4 @@
+[2026-10-17 13:20:50] follow-up chain started; improved PPO settings: --set train.ent_coef=0.003 --set train.epochs=10; study-2 best run: /DATA/Aurindum/FarmRL/experiments/02_improved_ppo/runs/improved_ent0p003_ep10
+[2026-10-17 13:20:50] START 06_pest_loss_sweep/pest_0p115
+[2026-10-17 14:13:09] END   06_pest_loss_sweep/pest_0p115 rc=0
+[2026-10-17 14:13:09] START 06_pest_loss_sweep/pest_0p2
