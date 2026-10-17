@@ -1,0 +1,25 @@
+Punjab -> Haryana
+Haryana -> Punjab
+shift: Punjab, as trained
+shift: +1 °C
+  threshold: round 1, train reward 88,396 (default 67,337)
+  threshold: round 2, train reward 88,396 (default 67,337)
+oracle: searching plans for seasons [2017, 2018, 2019, 2020, 2021, 2022, 2023] (4 processes)
+shift: +2 °C
+  threshold: round 1, train reward 86,962 (default 66,261)
+  threshold: round 2, train reward 86,962 (default 66,261)
+oracle: searching plans for seasons [2017, 2018, 2019, 2020, 2021, 2022, 2023] (4 processes)
+shift: 20% less rain
+  threshold: round 1, train reward 89,806 (default 68,907)
+  threshold: round 2, train reward 89,806 (default 68,907)
+oracle: searching plans for seasons [2017, 2018, 2019, 2020, 2021, 2022, 2023] (4 processes)
+shift: 2x price volatility
+  threshold: round 1, train reward 91,271 (default 68,879)
+  threshold: round 2, train reward 91,271 (default 68,879)
+oracle: searching plans for seasons [2017, 2018, 2019, 2020, 2021, 2022, 2023] (4 processes)
+shift: +2 °C and 20% less rain
+  threshold: round 1, train reward 87,012 (default 66,482)
+  threshold: round 2, train reward 87,013 (default 66,482)
+  threshold: round 3, train reward 87,013 (default 66,482)
+oracle: searching plans for seasons [2017, 2018, 2019, 2020, 2021, 2022, 2023] (4 processes)
+written /DATA/Aurindum/FarmRL/experiments/08_transfer_and_shift/transfer/README.md

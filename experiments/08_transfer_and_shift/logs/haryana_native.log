@@ -1,0 +1,10 @@
+tuning the rule baselines ['recommended', 'threshold'] on the training seasons
+  recommended: round 1, train reward 71,137 (default 65,200)
+  recommended: round 2, train reward 71,137 (default 65,200)
+  threshold: round 1, train reward 77,308 (default 58,537)
+  threshold: round 2, train reward 77,308 (default 58,537)
+training PPO seeds [42, 43, 44, 45, 46] for 1000000 steps each (4 processes, 1 torch thread each)
+rolling out ['ppo', 'no_input', 'random', 'recommended', 'threshold', 'recommended_tuned', 'threshold_tuned', 'ppo_untrained'] with 30 seeds per season
+oracle: searching plans for seasons [2017, 2018, 2019, 2020, 2021, 2022, 2023] (4 processes)
+evaluating 5 PPO training seeds and attributing the gain
+run saved to /DATA/Aurindum/FarmRL/experiments/08_transfer_and_shift/runs/haryana_native
