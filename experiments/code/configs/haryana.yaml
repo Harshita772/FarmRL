@@ -110,6 +110,12 @@ env:
     loss_per_month: 0.003         # grain lost in store (ICAR-CIPHET, Jha et al. 2015: under 1% in all)
     interest_per_month: 0.0058    # 7% a year on the money tied up (crop-loan rate)
 
+  forecast:
+    enabled: false
+    # A noisy forecast of the rain of the fortnight about to be played (true rain + N(0, noise_mm),
+    # floored at 0) is added to the observation when enabled. Used by the forecast study.
+    noise_mm: 0.0
+
 yield_fit:
   assumed_irrigation_mm: 300.0  # irrigation depth of a fully irrigated crop (ICRISAT has area, not depth)
   min_area_kha: 10.0            # district-years with less wheat area are left out of the panel

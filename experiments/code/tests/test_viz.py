@@ -86,7 +86,7 @@ def test_run_directory_is_complete(tiny_run):
     tuned = {"recommended_tuned", "threshold_tuned"}
     assert set(BASELINES) | tuned | {"ppo", "ppo_untrained"} == set(meta["policies"])      # baselines are discovered
     assert set(meta["tuned_policies"]) == tuned and meta["reference_policy"] in tuned
-    assert all(meta["mechanisms"].values()) and meta["action_heads"] == [3, 3, 3, 3]
+    assert all(v for k, v in meta["mechanisms"].items() if k != "forecast") and meta["action_heads"] == [3, 3, 3, 3]   # forecast: an observation option, off by default
     assert "ppo_untrained" not in tiny_run.policies() and "ppo_untrained" in tiny_run.policies(include_aux=True)
     assert {"train_seed", "iteration", "mean_return", "policy_loss", "value_loss", "entropy", "kl"} <= set(tiny_run.history)
     assert set(tiny_run.rollouts["split"]) == {"train", "test"}

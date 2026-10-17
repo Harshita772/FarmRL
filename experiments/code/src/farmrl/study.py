@@ -43,6 +43,11 @@ def run_row(path, label=None, oracle_from=None):
            "tuned_threshold_reward": None if ref is None else float(ref["reward"]),
            "oracle_profit": None if oracle is None else float(oracle["profit"]),
            "oracle_reward": None if oracle is None else float(oracle["reward"]), "oracle_source": oracle_src}
+    forecast = (run.config["env"].get("forecast") or {})
+    row.update({"pest_loss": (meta.get("yield_model") or {}).get("pest_loss"),
+                "forecast_noise_mm": forecast.get("noise_mm") if forecast.get("enabled") else None,
+                "tuned_threshold_sprays": None if ref is None else float(ref["pesticide_level"]),
+                "oracle_sprays": None if oracle is None else float(oracle["pesticide_level"])})
     for key in ("recommended_tuned", "recommended", "threshold", "random"):
         row[f"{key}_profit"] = float(summary.loc[key, "profit"]) if key in summary.index else None
     if ref is not None:
@@ -191,6 +196,51 @@ def summary_figure(df, path, title="Held-out profit by configuration"):
                 plt.Line2D([], [], marker="s", mfc="none", mec="#52514e", ls="none", label="hindsight oracle")]
     fig.legend(handles=handles, loc="lower center", fontsize=7, ncol=2, bbox_to_anchor=(0.5, 0.0))
     fig.tight_layout(rect=(0, 0.14, 1, 1))
+    fig.savefig(path, dpi=200)
+    plt.close(fig)
+    return path
+
+
+def sweep_figure(df, xcol, path, xlabel, title, baseline=None, baseline_label="no forecast"):
+    """Held-out profit of the agent, the tuned rule and the oracle against ``xcol`` (top), the
+    agent's gap to the rule with its seed std (middle) and sprays a season (bottom, when present).
+    ``baseline`` (a one-row frame, e.g. the run without a forecast) is drawn as a dashed line."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from .utils import COLORS, set_plot_style
+
+    set_plot_style()
+    d = df.sort_values(xcol)
+    x = d[xcol].to_numpy(float)
+    panels = 3 if d["tuned_threshold_sprays"].notna().any() and xcol == "pest_loss" else 2
+    fig, axes = plt.subplots(panels, 1, figsize=(6.6, 2.7 * panels), sharex=True)
+    ax = axes[0]
+    ax.fill_between(x, d["profit_mean"] - d["profit_std"], d["profit_mean"] + d["profit_std"], color=COLORS[0], alpha=0.18, lw=0)
+    ax.plot(x, d["profit_mean"], "o-", color=COLORS[0], label="PPO (mean ± std over seeds)")
+    ax.plot(x, d["tuned_threshold_profit"], "D-", color=COLORS[2], label="threshold_tuned")
+    ax.plot(x, d["oracle_profit"], "s--", color="#52514e", mfc="none", label="hindsight oracle")
+    if baseline is not None and len(baseline):
+        ax.axhline(float(baseline["profit_mean"].iloc[0]), color=COLORS[0], ls=":", lw=1.4, label=baseline_label)
+    ax.set(ylabel="held-out profit (INR/ha)", title=title)
+    ax.legend(fontsize=7, loc="best")
+    ax = axes[1]
+    gap = d["profit_mean"] - d["tuned_threshold_profit"]
+    ax.axhline(0, color="#52514e", lw=1)
+    ax.errorbar(x, gap, yerr=d["profit_std"].fillna(0), fmt="o-", color=COLORS[0], capsize=3)
+    for xi, gi in zip(x, gap):
+        ax.annotate(f"{gi:+,.0f}", (xi, gi), xytext=(0, 7), textcoords="offset points", ha="center", fontsize=7, color="#52514e")
+    ax.set(ylabel="PPO − threshold_tuned\n(INR/ha)")
+    if panels == 3:
+        ax = axes[2]
+        ax.plot(x, d["agent_pesticide_level"], "o-", color=COLORS[0], label="PPO")
+        ax.plot(x, d["tuned_threshold_sprays"], "D-", color=COLORS[2], label="threshold_tuned")
+        ax.plot(x, d["oracle_sprays"], "s--", color="#52514e", mfc="none", label="oracle")
+        ax.set(ylabel="spray doses per season")
+        ax.legend(fontsize=7)
+    axes[-1].set_xlabel(xlabel)
+    axes[-1].set_xticks(x)
+    fig.tight_layout()
     fig.savefig(path, dpi=200)
     plt.close(fig)
     return path

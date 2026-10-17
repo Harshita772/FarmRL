@@ -19,4 +19,7 @@ if not rows:
 profit, run = max(rows, key=lambda r: r[0])
 train = run.config["train"]
 print(f"best study-2 run: {run.name} ({profit:,.0f} INR/ha)", file=sys.stderr)
-print(f"--set train.ent_coef={train['ent_coef']} --set train.epochs={train['epochs']}")
+if "--path" in sys.argv[2:]:
+    print(run.path)                    # the run folder, for scripts that replay its models
+else:
+    print(f"--set train.ent_coef={train['ent_coef']} --set train.epochs={train['epochs']}")

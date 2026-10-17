@@ -18,7 +18,7 @@ def _steps(first, gap, count, T):
     return [s for s in (first + gap * i for i in range(count)) if s < T]
 
 
-def calendar_grid(env):
+def calendar_grid(env, fine_pests=False):
     """Blocks of candidate settings for ``calendar_policy``: {block: [partial params]}."""
     T = env.T
     months = [int(m) for m in env.store_levels] if env.on["storage"] else [0]
@@ -34,8 +34,9 @@ def calendar_grid(env):
     return {"nitrogen": nitrogen, "water": water, "pests": pests, "sale": [{"store": m} for m in months]}
 
 
-def threshold_grid(env):
-    """Blocks of candidate settings for ``threshold_policy``."""
+def threshold_grid(env, fine_pests=False):
+    """Blocks of candidate settings for ``threshold_policy``. ``fine_pests`` replaces the
+    coarse pest cut-off grid by every pair of cut-offs on a 0.02 step."""
     T = env.T
     nitrogen = [{"n_below": b, "n_level": lv, "n_until": u}
                 for b in (20, 30, 40, 50, 60, 80, 100) for lv in (1, 2) for u in (4, 5, 6, 7, 8, 9, T)]
@@ -46,6 +47,9 @@ def threshold_grid(env):
     pests = [{"p_low_above": lo, "p_high_above": hi}
              for lo in (0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.6, never)
              for hi in (0.2, 0.3, 0.4, 0.6, 0.8, never) if hi >= lo]
+    if fine_pests:
+        levels = [round(0.02 * i, 2) for i in range(1, 31)] + [never]
+        pests = [{"p_low_above": lo, "p_high_above": hi} for lo in levels for hi in levels if hi >= lo]
     sale = [{"store_below": 0.0, "store_months": 0}]
     if env.on["storage"]:
         sale += [{"store_below": b, "store_months": int(m)}
@@ -80,11 +84,11 @@ def _unique(candidates):
     return out
 
 
-def tune(env, family, seeds=3, objective="reward", max_rounds=4, log=None):
+def tune(env, family, seeds=3, objective="reward", max_rounds=4, log=None, fine_pests=False):
     """Tune one rule family on ``env.train_seasons``. Returns a JSON-ready record:
     params, default_params, the train score of both, candidates per block, evaluations."""
     factory, default = FAMILIES[family]
-    grid = {block: _unique(c) for block, c in GRIDS[family](env).items()}
+    grid = {block: _unique(c) for block, c in GRIDS[family](env, fine_pests=fine_pests).items()}
     seasons = env.train_seasons
     evaluate = lambda params: score(env, factory(params), seasons, seeds, objective)
     best = dict(default)

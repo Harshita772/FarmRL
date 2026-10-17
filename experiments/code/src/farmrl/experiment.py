@@ -347,7 +347,8 @@ def run_experiment(cfg, run_name=None, seeds=None, train_seeds=1, timesteps=None
         log(f"tuning the rule baselines {list(FAMILIES)} on the training seasons")
         tuned = tuning.tune_all(make(cfg["env"], "train"), seeds=int(tune_cfg.get("seeds", 3)),
                                 objective=tune_cfg.get("objective", "reward"),
-                                max_rounds=int(tune_cfg.get("max_rounds", 4)), log=log)
+                                max_rounds=int(tune_cfg.get("max_rounds", 4)), log=log,
+                                fine_pests=bool(tune_cfg.get("fine_pests", False)))
         (out / "baseline_tuning.json").write_text(json.dumps(tuned, indent=2))
 
     # --- agent(s) ---

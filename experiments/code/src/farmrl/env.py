@@ -107,6 +107,9 @@ MECHANISMS = {
     # month, warehouse charges, grain losses below 1% of the crop in storage (ICAR-CIPHET,
     # Jha et al. 2015, put all storage channels together under 1%) and 7% a year on the
     # money tied up (the crop-loan rate).
+    # A noisy forecast of the rain of the fortnight about to be played (the rain the chosen doses
+    # will meet): true rain plus N(0, noise_mm), floored at 0, drawn once per season. Off by default.
+    "forecast": {"enabled": False, "noise_mm": 0.0},
     "storage": {
         "enabled": False,
         "max_months": 2,
@@ -123,7 +126,7 @@ STEP_DAYS = 15
 OBS_NAMES = ["stage", "soil_moisture", "soil_n", "pest", "cum_rain", "cum_n", "cum_water",
              "price_index", "last_rain", "last_et0", "et_ratio"]
 # one extra observation per enabled mechanism that carries state through the season
-EXTRA_OBS = {"groundwater": "pump_cost", "pest_resistance": "spray_efficacy"}
+EXTRA_OBS = {"groundwater": "pump_cost", "pest_resistance": "spray_efficacy", "forecast": "rain_forecast"}
 
 
 class FarmEnv(gym.Env):
@@ -228,6 +231,8 @@ class FarmEnv(gym.Env):
             obs.append(self._pump_k * self.pump_lift() / 20)      # INR per mm of the next irrigation
         if self.on["pest_resistance"]:
             obs.append(self.spray_eff)
+        if self.on["forecast"]:
+            obs.append(self._forecast[min(self.t, self.T - 1)] / 50)     # same scale as last_rain
         return np.array(obs, dtype=np.float32)
 
     def pump_lift(self):
@@ -259,7 +264,11 @@ class FarmEnv(gym.Env):
         self.pest_damage = 0.0
         self.cum_rain = self.cum_n = self.cum_n_eff = self.cum_water = self.cum_irrigation = 0.0
         self.cum_pesticide = self.cum_eta = self.cum_etc = self.cum_cost = self.cum_penalty = 0.0
-        self.price = self.base_price * self.price_index.get(self.season, 1.0)
+        override = (options or {}).get("price_index")      # replay the season at another price level
+        self.price = self.base_price * (self.price_index.get(self.season, 1.0) if override is None else float(override))
+        if self.on["forecast"]:
+            noise = self.np_random.normal(0.0, float(self.mech["forecast"]["noise_mm"]), self.T)
+            self._forecast = np.maximum(0.0, self._wx[:, 0] + noise)
         gw = self.mech["groundwater"]
         self.depth = max(gw["min_depth_m"],
                          gw["depth_m"] - gw["decline_m_per_year"] * (gw["depth_year"] - (self.season + 1)))
