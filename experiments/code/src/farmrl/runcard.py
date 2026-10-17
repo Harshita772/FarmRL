@@ -223,7 +223,9 @@ def describe_run(run):
     what = {"ppo": "PPO (own implementation, `code/src/farmrl/agents/ppo.py`)",
             "dqn": "branching dueling DQN (own implementation, `code/src/farmrl/agents/dqn.py`)",
             "cem_threshold": "cross-entropy search over the threshold rule's parameters "
-                             "(`code/src/farmrl/agents/cem.py`)"}[algo]
+                             "(`code/src/farmrl/agents/cem.py`)",
+            "grpo": "critic-free GRPO-style policy optimisation with group-normalised advantages "
+                    "(own implementation, `code/src/farmrl/agents/grpo.py`)"}[algo]
     budget = (f"{m['timesteps']:,} steps per seed" if algo != "cem_threshold"
               else f"{(train.get('cem') or {})} per seed")
     out.append(f"- {what}, {budget}, "

@@ -1,0 +1,4 @@
+{'agent': 'improved PPO', 'steps': 100000, 'processes': 4, 'seconds_mean': 133.2541269659996, 'seconds_per_1M': 1332.541269659996, 'minutes_per_1M': 22.209021160999935}
+{'agent': 'GRPO, group 8', 'steps': 100000, 'processes': 4, 'seconds_mean': 125.16521733999252, 'seconds_per_1M': 1251.6521733999252, 'minutes_per_1M': 20.86086955666542}
+{'agent': 'GRPO, group 16', 'steps': 100000, 'processes': 4, 'seconds_mean': 125.74633204936981, 'seconds_per_1M': 1257.4633204936981, 'minutes_per_1M': 20.957722008228302}
+{'agent': 'GRPO, group 8, stepwise', 'steps': 100000, 'processes': 4, 'seconds_mean': 116.08464574813843, 'seconds_per_1M': 1160.8464574813843, 'minutes_per_1M': 19.34744095802307}

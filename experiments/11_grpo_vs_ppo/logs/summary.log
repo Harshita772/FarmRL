@@ -1,0 +1,18 @@
+/DATA/Aurindum/FarmRL/experiments/code/scripts/summarize_followup.py:110: RuntimeWarning: Mean of empty slice
+  m, sd = np.nanmean(curves, 0), np.nanstd(curves, 0)
+/DATA/Aurindum/conda/envs/RL/lib/python3.10/site-packages/numpy/lib/_nanfunctions_impl.py:2019: RuntimeWarning: Degrees of freedom <= 0 for slice.
+  var = nanvar(a, axis=axis, dtype=dtype, out=out, ddof=ddof,
+/DATA/Aurindum/FarmRL/experiments/code/scripts/summarize_followup.py:110: RuntimeWarning: Mean of empty slice
+  m, sd = np.nanmean(curves, 0), np.nanstd(curves, 0)
+/DATA/Aurindum/conda/envs/RL/lib/python3.10/site-packages/numpy/lib/_nanfunctions_impl.py:2019: RuntimeWarning: Degrees of freedom <= 0 for slice.
+  var = nanvar(a, axis=axis, dtype=dtype, out=out, ddof=ddof,
+/DATA/Aurindum/FarmRL/experiments/code/scripts/summarize_followup.py:110: RuntimeWarning: Mean of empty slice
+  m, sd = np.nanmean(curves, 0), np.nanstd(curves, 0)
+/DATA/Aurindum/conda/envs/RL/lib/python3.10/site-packages/numpy/lib/_nanfunctions_impl.py:2019: RuntimeWarning: Degrees of freedom <= 0 for slice.
+  var = nanvar(a, axis=axis, dtype=dtype, out=out, ddof=ddof,
+/DATA/Aurindum/FarmRL/experiments/code/scripts/summarize_followup.py:110: RuntimeWarning: Mean of empty slice
+  m, sd = np.nanmean(curves, 0), np.nanstd(curves, 0)
+/DATA/Aurindum/conda/envs/RL/lib/python3.10/site-packages/numpy/lib/_nanfunctions_impl.py:2019: RuntimeWarning: Degrees of freedom <= 0 for slice.
+  var = nanvar(a, axis=axis, dtype=dtype, out=out, ddof=ddof,
+11_grpo_vs_ppo: 4 rows -> /DATA/Aurindum/FarmRL/experiments/11_grpo_vs_ppo/README.md
+index: 27 runs -> /DATA/Aurindum/FarmRL/experiments/INDEX.md
