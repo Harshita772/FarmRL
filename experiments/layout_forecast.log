@@ -1,0 +1,9 @@
+[2026-10-17 22:41:40] study 12 started
+[2026-10-17 22:41:40] START 12_layout_plus_forecast/layout_fc10mm
+[2026-10-17 22:41:40] START 12_layout_plus_forecast/layout_fc25mm
+[2026-10-17 22:41:40] START 12_layout_plus_forecast/layout_fc0mm
+[2026-10-17 23:28:31] END   12_layout_plus_forecast/layout_fc25mm rc=0
+[2026-10-17 23:31:52] END   12_layout_plus_forecast/layout_fc0mm rc=0
+[2026-10-17 23:34:42] END   12_layout_plus_forecast/layout_fc10mm rc=0
+[2026-10-17 23:34:45] summary rc=0
+[2026-10-17 23:34:45] study 12 finished

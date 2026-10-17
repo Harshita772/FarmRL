@@ -1,0 +1,6 @@
+reusing the tuned rule baselines of /DATA/Aurindum/FarmRL/experiments/09_combined_action_settings/runs/fine4_joint/baseline_tuning.json
+training PPO seeds [42, 43, 44, 45, 46] for 1000000 steps each (4 processes, 1 torch thread each)
+rolling out ['ppo', 'no_input', 'random', 'recommended', 'threshold', 'recommended_tuned', 'threshold_tuned', 'ppo_untrained'] with 30 seeds per season
+oracle: searching plans for seasons [2017, 2018, 2019, 2020, 2021, 2022, 2023] (4 processes)
+evaluating 5 PPO training seeds and attributing the gain
+run saved to /DATA/Aurindum/FarmRL/experiments/12_layout_plus_forecast/runs/layout_fc10mm

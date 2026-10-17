@@ -83,6 +83,25 @@ STUDIES2["11_grpo_vs_ppo"] = dict(
     runs=[("grpo_g8", "GRPO, group 8, episode advantage"), ("grpo_g16", "GRPO, group 16, episode advantage"),
           ("grpo_g8_stepwise", "GRPO, group 8, per-step advantage")],
     include=[PPO_REF], figure=None, extras="grpo")
+STUDIES2["12_layout_plus_forecast"] = dict(
+    title="Study 12 — The best action layout combined with a rain forecast",
+    question="The 4-level water grid with the joint head (study 9) and a noisy next-fortnight rain forecast (study 7) each helped "
+             "PPO on their own. Do the two add up?",
+    setup=["Improved PPO (ent_coef 0.003, epochs 10, 1M steps, 5 seeds) with the water grid {0, 25, 50, 75} mm, the joint "
+           "nitrogen x water head and the rain forecast in the observation at noise sd 0, 10 and 25 mm.",
+           "The rule is retuned on the 4-level grid (reusing the tuning of study 9's `fine4_joint`, which is the same grid with the "
+           "same dynamics) and the oracle is recomputed in each forecast environment.",
+           "Comparison rows: layout only without a forecast (study 9), the study-2 best agent, and the forecast-only runs of study 7 "
+           "(standard grid, separate heads). The table below the results lines these up by forecast noise."],
+    runs=[("layout_fc0mm", "layout + forecast noise 0 mm (perfect)"), ("layout_fc10mm", "layout + forecast noise 10 mm"),
+          ("layout_fc25mm", "layout + forecast noise 25 mm")],
+    include=[("09_combined_action_settings", "fine4_joint", "layout only, no forecast (study 9)"), BEST,
+             ("07_forecast_information", "forecast_sd0mm", "forecast only, noise 0 mm (study 7)"),
+             ("07_forecast_information", "forecast_sd10mm", "forecast only, noise 10 mm (study 7)"),
+             ("07_forecast_information", "forecast_sd25mm", "forecast only, noise 25 mm (study 7)")],
+    figure=("forecast_noise_mm", "layout_forecast_sweep.png", "forecast noise, sd of the rain forecast error (mm)",
+            "Held-out profit: 4-level grid + joint head + forecast", "layout only, no forecast"),
+    extras="layout_forecast")
 STUDIES2["08_transfer_and_shift"] = dict(cards_only=True)      # its card comes from scripts/transfer_eval.py
 ANALYSIS2 = {}          # written by hand once the results are in
 
@@ -148,6 +167,27 @@ def grpo_extras(d, df):
     return out
 
 
+def layout_forecast_extras(df):
+    """Markdown: layout and forecast effects lined up by forecast noise (study 12)."""
+    by = df.set_index("run")
+    best = [r for r in by.index if r.startswith("improved_ent")][0]
+    cells = [("none", best, "fine4_joint"), ("0 mm", "forecast_sd0mm", "layout_fc0mm"),
+             ("10 mm", "forecast_sd10mm", "layout_fc10mm"), ("25 mm", "forecast_sd25mm", "layout_fc25mm")]
+    out = ["## Layout and forecast, side by side", "",
+           "Held-out profit (INR/ha), mean ± std over 5 seeds. The left column is the standard water grid with separate heads, "
+           "the middle column the 4-level grid with the joint head. Each row's own tuned rule and oracle are in the table above.", "",
+           "| Forecast noise | Standard grid, separate heads | 4-level grid + joint head | Layout effect | Forecast effect on the layout agent |",
+           "|---|---|---|---|---|"]
+    base = by.loc["fine4_joint", "profit_mean"]
+    for name, left, right in cells:
+        if left not in by.index or right not in by.index:
+            continue
+        a, b = by.loc[left], by.loc[right]
+        out.append(f"| {name} | {a['profit_mean']:,.0f} ± {a['profit_std']:,.0f} | {b['profit_mean']:,.0f} ± {b['profit_std']:,.0f} | "
+                   f"{b['profit_mean'] - a['profit_mean']:+,.0f} | {b['profit_mean'] - base:+,.0f} |")
+    return out + [""]
+
+
 def write_global_index(exp):
     """experiments/INDEX.md: one row per run of every study."""
     from farmrl import runs as runs_mod
@@ -209,6 +249,8 @@ def summarize(exp, name):
         extra += lines + [""]
     if spec.get("extras") == "grpo":
         extra += grpo_extras(d, df)
+    if spec.get("extras") == "layout_forecast":
+        extra += layout_forecast_extras(df)
     if ANALYSIS2.get(name):
         extra += ["## Analysis", "", *[f"{t}\n" for t in ANALYSIS2[name]]]
     study.write_card(d, spec["title"], spec["question"], spec["setup"], df, extra=extra)

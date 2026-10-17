@@ -111,3 +111,26 @@ def test_multi_scenario_plan_search_and_information_limited_oracles():
     full = oracle.plan_reward(test, 2017, np.asarray(plans["full"][2017]["plan"]), 4)
     blind = oracle.plan_reward(test, 2017, np.asarray(plans["none"][2017]["plan"]), 4)
     assert np.isfinite(full) and np.isfinite(blind)
+
+
+def test_best_layout_and_forecast_train_together():
+    """4-level water grid + joint nitrogen x water head + rain forecast, as in study 12."""
+    from farmrl.agents.ppo import PPO
+    from farmrl.baselines import BASELINES
+    cfg = copy.deepcopy(CFG)
+    cfg["irrigation_levels"] = [0, 25, 50, 75]
+    cfg["forecast"] = {"enabled": True, "noise_mm": 10.0}
+    env = toy_env(cfg=cfg)
+    assert env.action_space.nvec.tolist() == [3, 4, 3, 3] and env.obs_names[-1] == "rain_forecast"
+    train = {"lr": 3e-4, "gamma": 1.0, "gae_lambda": 0.95, "clip_eps": 0.2, "n_steps": 48, "batch_size": 16, "epochs": 2,
+             "hidden": 16, "ent_coef": 0.003, "vf_coef": 0.5, "head": "joint_nw", "obs_norm": True, "ret_norm": True,
+             "ortho_init": True, "lr_decay": True, "mask_storage": True}
+    agent = PPO(env, train)
+    assert agent.net.sizes == [12, 3, 3]                       # one softmax over 3 x 4 nitrogen-water pairs
+    agent.learn(96)
+    obs, _ = env.reset(seed=0)
+    a = agent.predict(obs)
+    assert a.shape == (4,) and a[1] < 4
+    assert [p.shape[-1] for p in agent.action_probs(obs)] == [3, 4, 3, 3]
+    rule = BASELINES["recommended"](obs, env)                  # the doses of the rules are mapped onto the 4-level grid
+    assert env.w_levels[rule[1]] in (0.0, 75.0)
