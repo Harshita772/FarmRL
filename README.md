@@ -74,10 +74,53 @@ spraying no longer pays, so PPO and both tuned rules never spray and pests stop 
 decision; sale timing adds nothing either, because under the assumed storage costs PPO
 always sells at harvest.
 
+### Comparative study: is PPO underperforming, or is the rule already near the best possible?
+
+Everything for this study lives in [`experiments/`](experiments/README.md), with its own copy of
+the code in `experiments/code/` (the repository's `src/` is not touched), one folder per study
+and per run, the logs, run cards and an [index of all runs](experiments/INDEX.md). Each
+configuration is trained with 5 seeds and scored on the same held-out seasons (2017–2023).
+
+![Held-out profit by configuration](experiments/summary.png)
+
+| Held-out profit, INR/ha | Mean ± std (5 seeds) | Gap to `threshold_tuned` | % of oracle |
+|---|---|---|---|
+| Hindsight oracle (weather and price known in advance) | 89,654 | | 100% |
+| `threshold_tuned` rule | 87,232 | | 97.3% |
+| PPO, original settings (200k steps) | 86,135 ± 179 | −1,096 | 96.1% |
+| PPO, improved bundle (best of the 6-way sweep) | 86,200 ± 542 | −1,032 | 96.1% |
+| PPO, joint nitrogen × water head | 86,250 ± 194 | −982 | 96.2% |
+| PPO, water grid 0/25/50/75 mm | 86,587 ± 286 | +196 (rule retuned on that grid: 86,390) | 96.6% |
+| Branching dueling DQN | 83,617 ± 1,741 | −3,615 | 93.3% |
+| CEM over the threshold rule's parameters | 84,178 ± 192 | −3,054 | 93.9% |
+| PPO, pest_loss = 0.35 (own oracle 90,561, own rule 83,746) | 86,410 ± 492 | +2,664 | 95.4% |
+
+1. **The rule is already near the best possible.** A hindsight oracle (CEM over each season's
+   12-step plan, with that season's weather and price known) earns 89,654; the tuned threshold
+   rule reaches 97.3% of it, and no policy that reacts to the season as it unfolds can reach
+   the oracle.
+2. **PPO is slightly below the rule, and it is not an optimisation problem.** Normalised
+   observations and returns, LR decay, orthogonal init, gamma = 1, a masked storage head and
+   five times more steps, with an `ent_coef` × `epochs` sweep, all stay within 85.8–86.2k, 1.0–1.4k
+   below the rule in every seed. The loss is in the water decisions.
+3. **A joint head changes nothing; a finer water grid gives a weak hint** (+387 over the best
+   factored run, about one seed std).
+4. **DQN and CEM over the rule's parameters are worse** (83.6k and 84.2k).
+5. **When pests cost more (`pest_loss` 0.35), PPO learns to spray** (3.6 doses a season instead
+   of 0) and beats the tuned rule by 2.7k.
+
+Caveats: 7 held-out seasons; the v4 reproduction (86,135) is about 450 below the original v4
+run (86,584) because of the platform (the agent code was checked to be identical; v4 ran on
+Windows with torch 2.5, these on Linux with torch 2.6), so compare numbers within the study, not
+with the v4 card; the oracle is a heuristic search and so a lower bound on the true
+foresight optimum. Reproduce with `bash experiments/run_all_studies.sh` (about 8 hours on 4
+processes).
+
 ## Repository Structure
 
 ```text
 FarmRL/
+├── experiments/                 # comparative study: own code copy, runs, logs, cards, summary figure
 ├── configs/default.yaml         # environment, costs (CACP, cited), training hyperparameters
 ├── configs/fitted_params.yaml   # yield-model parameters written by the fit
 ├── data/raw/                    # downloaded datasets (not committed)

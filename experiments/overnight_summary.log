@@ -1,0 +1,5 @@
+01_oracle_bound: 1 rows -> /DATA/Aurindum/FarmRL/experiments/01_oracle_bound/README.md
+02_improved_ppo: 7 rows -> /DATA/Aurindum/FarmRL/experiments/02_improved_ppo/README.md
+03_action_structure: 3 rows -> /DATA/Aurindum/FarmRL/experiments/03_action_structure/README.md
+04_other_algorithms: 4 rows -> /DATA/Aurindum/FarmRL/experiments/04_other_algorithms/README.md
+05_pest_loss_prior: 2 rows -> /DATA/Aurindum/FarmRL/experiments/05_pest_loss_prior/README.md

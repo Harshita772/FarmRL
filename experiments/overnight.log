@@ -1,0 +1,33 @@
+[2026-10-17 01:16:08] chain started in /DATA/Aurindum/FarmRL/experiments
+[2026-10-17 01:16:08] START 01_oracle_bound/baseline_v4_oracle
+[2026-10-17 01:33:21] END   01_oracle_bound/baseline_v4_oracle rc=0
+[2026-10-17 01:33:22] summary 01_oracle_bound rc=0
+[2026-10-17 01:33:22] START 02_improved_ppo/improved_ent0p01_ep10
+[2026-10-17 02:20:37] END   02_improved_ppo/improved_ent0p01_ep10 rc=0
+[2026-10-17 02:20:37] START 02_improved_ppo/improved_ent0p003_ep10
+[2026-10-17 03:08:17] END   02_improved_ppo/improved_ent0p003_ep10 rc=0
+[2026-10-17 03:08:17] START 02_improved_ppo/improved_ent0_ep10
+[2026-10-17 03:56:14] END   02_improved_ppo/improved_ent0_ep10 rc=0
+[2026-10-17 03:56:14] START 02_improved_ppo/improved_ent0p01_ep4
+[2026-10-17 04:37:01] END   02_improved_ppo/improved_ent0p01_ep4 rc=0
+[2026-10-17 04:37:01] START 02_improved_ppo/improved_ent0p003_ep4
+[2026-10-17 05:17:13] END   02_improved_ppo/improved_ent0p003_ep4 rc=0
+[2026-10-17 05:17:13] START 02_improved_ppo/improved_ent0_ep4
+[2026-10-17 05:57:48] END   02_improved_ppo/improved_ent0_ep4 rc=0
+[2026-10-17 05:57:49] summary 02_improved_ppo rc=0
+[2026-10-17 05:57:50] best study-2 settings: --set train.ent_coef=0.003 --set train.epochs=10
+[2026-10-17 05:57:50] START 03_action_structure/joint_nw
+[2026-10-17 06:42:18] END   03_action_structure/joint_nw rc=0
+[2026-10-17 06:42:18] START 03_action_structure/fine_water
+[2026-10-17 07:31:47] END   03_action_structure/fine_water rc=0
+[2026-10-17 07:31:48] summary 03_action_structure rc=0
+[2026-10-17 07:31:48] START 04_other_algorithms/dqn_branching
+[2026-10-17 08:40:51] END   04_other_algorithms/dqn_branching rc=0
+[2026-10-17 08:40:51] START 04_other_algorithms/cem_threshold
+[2026-10-17 08:45:48] END   04_other_algorithms/cem_threshold rc=0
+[2026-10-17 08:45:49] summary 04_other_algorithms rc=0
+[2026-10-17 08:45:49] START 05_pest_loss_prior/improved_best_pest035
+[2026-10-17 09:37:07] END   05_pest_loss_prior/improved_best_pest035 rc=0
+[2026-10-17 09:37:08] summary 05_pest_loss_prior rc=0
+[2026-10-17 09:37:10] summary of all studies rc=0
+[2026-10-17 09:37:10] chain finished
