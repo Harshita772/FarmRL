@@ -1,9 +1,9 @@
 """Rebuild everything with one command.
 
-    conda run -n TogAI python scripts/run_all.py --run-name v2
-    conda run -n TogAI python scripts/run_all.py --run-name smoke --quick
-    conda run -n TogAI python scripts/run_all.py --run-name v2 --skip data experiments   # redraw only
-    conda run -n TogAI python scripts/run_all.py --run-name v3_haryana --config configs/haryana.yaml --no-demo
+    python scripts/run_all.py --run-name v2
+    python scripts/run_all.py --run-name smoke --quick
+    python scripts/run_all.py --run-name v2 --skip data experiments   # redraw only
+    python scripts/run_all.py --run-name v3_haryana --config configs/haryana.yaml --no-demo
     (a run named <name>_<variant> is drawn next to <name> in its region figure and on the Robustness page)
 
 Stages, in order (each is a script that can also be run on its own):

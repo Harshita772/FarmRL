@@ -184,19 +184,25 @@ FarmRL/
 
 ## Setup
 
-Everything runs in the existing conda environment `TogAI`:
-
 ```bash
-conda run -n TogAI python -m pip install -r requirements.txt
-conda run -n TogAI python -m ipykernel install --user --name TogAI
+# Clone repository
+git clone https://github.com/Harshita772/FarmRL.git
+cd FarmRL
+
+# Create and activate environment (venv or conda)
+python -m venv venv
+source venv/bin/activate  # On Windows: .\venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
 ```
 
 ## One-command pipeline
 
 ```bash
-conda run -n TogAI python scripts/download_data.py              # once: fetch raw data, prints manual steps for the rest
-conda run -n TogAI python scripts/run_all.py --run-name v1      # everything below, in order
-conda run -n TogAI python scripts/run_all.py --run-name smoke --quick   # same, tiny settings
+python scripts/download_data.py              # once: fetch raw data, prints manual steps for the rest
+python scripts/run_all.py --run-name v1      # everything below, in order
+python scripts/run_all.py --run-name smoke --quick   # same, tiny settings
 ```
 
 `run_all.py` runs these stages; each is also a script of its own, and `--skip` / `--only`
@@ -222,8 +228,8 @@ held-out seasons drier and wetter than the median (`dry_wet.csv`). A run named
 `<name>_<variant>` is drawn next to `<name>` in the region figure and on the dashboard:
 
 ```bash
-conda run -n TogAI python scripts/run_all.py --run-name v3_haryana --config configs/haryana.yaml --no-demo
-conda run -n TogAI python scripts/run_all.py --run-name v3
+python scripts/run_all.py --run-name v3_haryana --config configs/haryana.yaml --no-demo
+python scripts/run_all.py --run-name v3
 ```
 
 ### What a run folder contains
@@ -249,7 +255,7 @@ the index with `python scripts/make_runcard.py --all`.
 to the current files, regions or numbers, and the dashboard lists the new run automatically:
 
 ```bash
-conda run -n TogAI python scripts/run_all.py --run-name v2
+python scripts/run_all.py --run-name v2
 ```
 
 **Compute.** Training seeds run side by side in a multiprocessing pool. Both knobs live in
@@ -258,7 +264,7 @@ one place, the `compute` block of the config, and can be overridden per run:
 ```yaml
 compute:
   torch_threads: 1      # threads per process
-  parallel_seeds: 4     # 6 max when plugged in; 2-3 on battery
+  parallel_seeds: 4     # adjust based on available CPU cores
 ```
 
 ```bash
@@ -275,7 +281,7 @@ python scripts/run_experiments.py --run-name v1 --tensorboard                   
 python scripts/make_animation.py --run v1 --season 2019 --compare ppo_untrained                      # untrained vs trained agent
 python scripts/make_figures.py --run v1 --only season_timeline --season 2021
 python scripts/make_maps.py --run v1 --metric ppo_water_saved_mm --policy threshold
-conda run -n TogAI python -m pytest                                                                  # all tests
+python -m pytest                                                                  # all tests
 ```
 
 A new baseline only needs to be added to `BASELINES` in `src/farmrl/baselines.py`: the
@@ -305,8 +311,8 @@ on held-out years.
 | `configs/haryana.yaml` | Haryana | Karnal | Haryana | `configs/fitted_params_haryana.yaml` |
 
 ```bash
-conda run -n TogAI python scripts/download_data.py district_weather   # once: weather for every panel district (cached)
-conda run -n TogAI python scripts/run_all.py --run-name haryana --config configs/haryana.yaml
+python scripts/download_data.py district_weather   # once: weather for every panel district (cached)
+python scripts/run_all.py --run-name haryana --config configs/haryana.yaml
 ```
 
 For another state, copy a config, set `region`, add its weather site to
@@ -316,7 +322,7 @@ cost block.
 ## Dashboard
 
 ```bash
-conda run -n TogAI python -m streamlit run app/streamlit_app.py
+streamlit run streamlit_app.py
 ```
 
 ![Dashboard overview](docs/dashboard.png)

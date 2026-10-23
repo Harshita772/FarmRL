@@ -1,7 +1,7 @@
 """District choropleth of a run: static PNG/PDF and interactive HTML in results/runs/<name>/maps/.
 
-    conda run -n TogAI python scripts/make_maps.py --run v1
-    conda run -n TogAI python scripts/make_maps.py --run v1 --metric ppo_water_saved_mm --policy threshold
+    python scripts/make_maps.py --run v1
+    python scripts/make_maps.py --run v1 --metric ppo_water_saved_mm --policy threshold
 
 Needs district_summary.csv in the run (run_experiments.py --districts) and the boundary
 file from `python scripts/download_data.py geo`.

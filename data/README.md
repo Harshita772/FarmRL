@@ -5,8 +5,8 @@
 published reports, and `data/geo/` district boundaries. Nothing in this folder is synthetic.
 
 ```bash
-conda run -n TogAI python scripts/download_data.py     # fetch what can be fetched, print manual steps for the rest
-conda run -n TogAI python scripts/prepare_data.py      # raw -> processed, fit the yield model
+python scripts/download_data.py     # fetch what can be fetched, print manual steps for the rest
+python scripts/prepare_data.py      # raw -> processed, fit the yield model
 ```
 
 `download_data.py` takes step names to run only part of it:

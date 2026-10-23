@@ -1,7 +1,7 @@
 """Save every report figure of a run to results/runs/<name>/figures/ as PNG (300 dpi) and PDF.
 
-    conda run -n TogAI python scripts/make_figures.py --run v1
-    conda run -n TogAI python scripts/make_figures.py --run v1 --only season_timeline --season 2019
+    python scripts/make_figures.py --run v1
+    python scripts/make_figures.py --run v1 --only season_timeline --season 2019
 """
 import sys, argparse
 from pathlib import Path

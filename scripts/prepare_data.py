@@ -1,7 +1,7 @@
 """Build data/processed/ from data/raw/ and fit the yield model.
 
-    conda run -n TogAI python scripts/prepare_data.py
-    conda run -n TogAI python scripts/prepare_data.py --config configs/haryana.yaml
+    python scripts/prepare_data.py
+    python scripts/prepare_data.py --config configs/haryana.yaml
 
 Datasets that are not on disk are reported and skipped; the weather, price and ICRISAT
 tables are required because the environment and the yield fit cannot run without them.

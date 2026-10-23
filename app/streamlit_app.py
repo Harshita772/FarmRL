@@ -1,6 +1,6 @@
 """FarmRL dashboard, page "Overview".
 
-    conda run -n TogAI streamlit run app/streamlit_app.py
+    streamlit run app/streamlit_app.py
 """
 import sys
 from pathlib import Path

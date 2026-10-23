@@ -1,7 +1,7 @@
 """Train or load PPO, roll out every policy on all seasons and save a run directory.
 
-    conda run -n TogAI python scripts/run_experiments.py --run-name v1 --multi-seed-train 3 --districts --sensitivity
-    conda run -n TogAI python scripts/run_experiments.py --run-name smoke --quick
+    python scripts/run_experiments.py --run-name v1 --multi-seed-train 3 --districts --sensitivity
+    python scripts/run_experiments.py --run-name smoke --quick
 
 Training seeds run in a multiprocessing pool sized by the config's ``compute`` block
 (``parallel_seeds`` processes, ``torch_threads`` threads each). See farmrl/experiment.py

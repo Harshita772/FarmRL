@@ -1,7 +1,7 @@
 """Download the raw datasets into data/raw/.
 
-    conda run -n TogAI python scripts/download_data.py            # everything
-    conda run -n TogAI python scripts/download_data.py weather msp  # selected steps
+    python scripts/download_data.py            # everything
+    python scripts/download_data.py weather msp  # selected steps
 
 Every step is independent: one that cannot run (missing credentials, site unreachable,
 registration wall) prints manual instructions and the script moves on. Nothing is ever
@@ -155,7 +155,7 @@ def kaggle():
        "Create New Token". A file called kaggle.json is downloaded.
     2. Move it to {cred}
        (PowerShell:  mkdir $HOME\\.kaggle -Force; mv $HOME\\Downloads\\kaggle.json $HOME\\.kaggle\\)
-    3. Re-run:  conda run -n TogAI python scripts/download_data.py kaggle
+    3. Re-run:  python scripts/download_data.py kaggle
   Or download yield_df.csv by hand from
     https://www.kaggle.com/datasets/{KAGGLE_DATASET}
   and save it as data/raw/yield_df.csv. The dataset's four source files (pesticides.csv,
@@ -196,7 +196,7 @@ def icrisat():
         Rainfall: Monthly / Annual               -> data/raw/icrisat_rainfall.csv
         Prices: Farm Harvest Prices              -> data/raw/icrisat_prices.csv
      Replace existing files of the same name; the loader keeps every state it finds.
-  3. Re-run:  conda run -n TogAI python scripts/prepare_data.py"""
+  3. Re-run:  python scripts/prepare_data.py"""
     missing = [n for n in ("icrisat_crops.csv", "icrisat_fertiliser.csv", "icrisat_irrigation.csv",
                            "icrisat_rainfall.csv", "icrisat_prices.csv") if not (RAW / n).exists()]
     if missing:

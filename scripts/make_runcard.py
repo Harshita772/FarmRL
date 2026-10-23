@@ -1,8 +1,8 @@
 """Write the run card (README.md), params/ copies and results/runs/INDEX.md.
 
-    conda run -n TogAI python scripts/make_runcard.py --run v4          # one run
-    conda run -n TogAI python scripts/make_runcard.py --all             # every run + the index
-    conda run -n TogAI python scripts/make_runcard.py --run v1 --code-from 5458344 --reason "..."
+    python scripts/make_runcard.py --run v4          # one run
+    python scripts/make_runcard.py --all             # every run + the index
+    python scripts/make_runcard.py --run v1 --code-from 5458344 --reason "..."
 
 New runs save their code snapshot themselves; --code-from rebuilds code/ from a git commit
 for runs made before that, and labels it as reconstructed.

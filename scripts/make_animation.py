@@ -1,7 +1,7 @@
 """Animate one season of a run as a GIF (and MP4 if ffmpeg is installed).
 
-    conda run -n TogAI python scripts/make_animation.py --run v1 --season 2019 --compare recommended
-    conda run -n TogAI python scripts/make_animation.py --run v1 --compare ppo_untrained --demo
+    python scripts/make_animation.py --run v1 --season 2019 --compare recommended
+    python scripts/make_animation.py --run v1 --compare ppo_untrained --demo
 
 Without --season the held-out season where the agent gains most over --compare is used.
 Files go to results/runs/<name>/animations/; --demo also copies the GIF to docs/demo.gif.

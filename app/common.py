@@ -44,8 +44,8 @@ def setup(title):
         st.title("FarmRL dashboard")
         st.warning("No experiment run found in `results/runs/`.")
         st.markdown("Build one with the pipeline, then reload this page:")
-        st.code("conda run -n TogAI python scripts/run_all.py --run-name v1\n"
-                "# or a fast smoke run\nconda run -n TogAI python scripts/run_all.py --run-name smoke --quick")
+        st.code("python scripts/run_all.py --run-name v1\n"
+                "# or a fast smoke run\npython scripts/run_all.py --run-name smoke --quick")
         st.stop()
     with st.sidebar:
         st.header("Run")

@@ -1,1 +1,1 @@
-Main notebook: `FarmRL_main.ipynb` (kernel TogAI) runs the whole pipeline; see the top-level README for the nbconvert command.
+Main notebook: `FarmRL_main.ipynb` (Jupyter / Python 3 kernel) runs the whole pipeline; see the top-level README for the nbconvert command.
