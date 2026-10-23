@@ -1,14 +1,3 @@
----
-title: FarmRL Crop Management & Market Timing
-emoji: 🌾
-colorFrom: green
-colorTo: blue
-sdk: streamlit
-sdk_version: "1.39.0"
-app_file: streamlit_app.py
-pinned: false
----
-
 # FarmRL: Reinforcement Learning for Crop Input Management and Market Timing
 
 **Team:** Harshita Vachhani (B23EE1026) & Aurindum Banerjee (B23CS1006)  
@@ -239,6 +228,16 @@ The repository is configured for zero-configuration cloud deployment:
 1. **Streamlit Community Cloud:** 
    - Fork/push to GitHub.
    - Go to [share.streamlit.io](https://share.streamlit.io), select your repository, set the main entrypoint to `streamlit_app.py` (or `app/streamlit_app.py`), and deploy.
-2. **Hugging Face Spaces:**
+2. **Hugging Face Spaces (Optional):**
    - Create a new Streamlit Space.
-   - Add this repository as a remote and push. The YAML header at the top of this README automatically configures the Space.
+   - Add this repository as a remote and push. If required, the Space metadata configuration:
+   ```yaml
+   title: FarmRL Crop Management & Market Timing
+   emoji: 🌾
+   colorFrom: green
+   colorTo: blue
+   sdk: streamlit
+   sdk_version: "1.39.0"
+   app_file: streamlit_app.py
+   pinned: false
+   ```
