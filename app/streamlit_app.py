@@ -2,6 +2,15 @@
 
     conda run -n TogAI streamlit run app/streamlit_app.py
 """
+import sys
+from pathlib import Path
+
+_APP_DIR = Path(__file__).resolve().parent
+_ROOT_DIR = _APP_DIR.parent
+for _p in [str(_APP_DIR), str(_ROOT_DIR / 'src'), str(_ROOT_DIR)]:
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
 import streamlit as st
 
 import common

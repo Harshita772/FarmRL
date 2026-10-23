@@ -1,3 +1,14 @@
+---
+title: FarmRL Crop Management & Market Timing
+emoji: 🌾
+colorFrom: green
+colorTo: blue
+sdk: streamlit
+sdk_version: "1.39.0"
+app_file: streamlit_app.py
+pinned: false
+---
+
 # FarmRL — Reinforcement Learning for Crop Input Management
 
 **Team:** Harshita Vachhani (B23EE1026), Aurindum Banerjee (B23CS1006)
@@ -47,7 +58,6 @@ rule's cut-offs (nitrogen, water, pests, sale; one block at a time until nothing
 on the training seasons only, maximising the same reward PPO is trained on. The tuned rules
 are then evaluated on the held-out seasons as `recommended_tuned` and `threshold_tuned`, and
 the one that did best in training is the reference PPO is compared with.
-
 **Where the gain comes from.** PPO's held-out gain over a rule baseline is split between
 the four decisions with Shapley values: every mix of "agent decides / rule decides" over
 the action heads is played and each decision gets its average marginal effect, so the four
