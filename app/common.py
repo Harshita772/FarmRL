@@ -84,6 +84,39 @@ def setup(title):
         layout="wide"
     )
 
+    # Global styling to prevent metric values, labels, and deltas from clipping with ellipsis.
+    st.markdown('''
+        <style>
+        div[data-testid="stMetricValue"] {
+            font-size: clamp(1.05rem, 1.3vw, 1.35rem) !important;
+            white-space: nowrap !important;
+            overflow: visible !important;
+            text-overflow: clip !important;
+        }
+        div[data-testid="stMetricLabel"] {
+            white-space: normal !important;
+            word-wrap: break-word !important;
+            line-height: 1.25 !important;
+        }
+        div[data-testid="stMetricLabel"] > div,
+        div[data-testid="stMetricLabel"] p {
+            white-space: normal !important;
+            word-wrap: break-word !important;
+            font-size: 0.88rem !important;
+        }
+        div[data-testid="stMetricDelta"] {
+            white-space: normal !important;
+            word-wrap: break-word !important;
+            font-size: 0.8rem !important;
+            line-height: 1.2 !important;
+        }
+        div[data-testid="stMetricDelta"] > div {
+            white-space: normal !important;
+            font-size: 0.8rem !important;
+        }
+        </style>
+    ''', unsafe_allow_html=True)
+
     # Retrieve the names of all available saved experiment runs.
     # The list is expected to be ordered with the newest runs first.
     names = runs.list_runs()

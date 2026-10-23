@@ -28,6 +28,9 @@ class Run:
         if not (self.path / "metadata.json").exists():
             raise FileNotFoundError(f"{self.path} is not a run directory (no metadata.json)")
 
+    def __fspath__(self):
+        return str(self.path)
+
     def _csv(self, name, **kw):
         p = self.path / name
         return pd.read_csv(p, **kw) if p.exists() else None
@@ -143,7 +146,7 @@ def related(run, runs_dir=None):
 
 def get(run=None, runs_dir=None):
     """Resolve a ``Run`` from a Run, a path, a name, or ``None`` for the newest run."""
-    if isinstance(run, Run):
+    if isinstance(run, Run) or type(run).__name__ == "Run" or (hasattr(run, "path") and hasattr(run, "meta")):
         return run
     root = Path(runs_dir or RUNS_DIR)
     if run is None:

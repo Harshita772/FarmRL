@@ -60,7 +60,7 @@ for card, (name, d) in zip(cards, steps.items()):
     profit = d["final_profit"].iloc[0]
     pen = d["total_penalties"].iloc[0] if "total_penalties" in d.columns else d["penalty"].sum()
     card.metric(style.label(name), f"₹{val:,.0f}/ha",
-                "best" if name == best else f"{val - ref:+,.0f} vs {style.label(best)}",
+                "best" if name == best else f"{val - ref:+,.0f} vs best",
                 delta_color="off" if name == best else "normal")
     months = int(d["store_months"].sum())
     sale = f" · stored {months} mo, sold at ₹{d['final_sale_price'].iloc[0]:,.0f}" if months else ""
