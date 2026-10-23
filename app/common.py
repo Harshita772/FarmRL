@@ -115,6 +115,21 @@ def setup(title):
             white-space: normal !important;
             font-size: 0.8rem !important;
         }
+
+        /* Rename default 'streamlit app' navigation item in sidebar to 'Overview' */
+        div[data-testid="stSidebarNav"] ul li:first-child a span,
+        a[data-testid="stSidebarNavLink"]:first-child span {
+            visibility: hidden !important;
+            position: relative !important;
+        }
+        div[data-testid="stSidebarNav"] ul li:first-child a span::after,
+        a[data-testid="stSidebarNavLink"]:first-child span::after {
+            visibility: visible !important;
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            content: "Overview" !important;
+        }
         </style>
     ''', unsafe_allow_html=True)
 

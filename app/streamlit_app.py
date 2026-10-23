@@ -75,7 +75,7 @@ st.latex(
     r"\frac{N^{\text{cum}}_t}{200},\ \frac{W^{\text{cum}}_t}{500},\ \frac{P_t}{P_0},\ \frac{R_{t-1}}{50},\ "
     r"\frac{\text{ET}_{0,t-1}}{100},\ \rho_t,\ \frac{c^{\text{pump}}_t}{20},\ e^{\text{spray}}_t \Big]"
 )
-st.markdown("""
+st.markdown(r"""
 - **$t / T$**: Normalized season progression stage ($0$ to $1$ across the 12 fortnights).
 - **$\theta_t$**: Available root-zone soil moisture as a fraction of field capacity ($0$ to $1$).
 - **$N^{\text{soil}}_t$**: Active mineral nitrogen in the root zone (kg N/ha).
