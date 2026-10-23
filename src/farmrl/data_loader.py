@@ -25,7 +25,15 @@ REFERENCE = ROOT / "data" / "reference"
 # quarters of the ICRISAT districts in the files we have and are only used to attach
 # season weather to the district yield records when fitting the yield model.
 SITES = {
+    # Punjab
     "ludhiana": {"lat": 30.90, "lon": 75.85, "state": "Punjab", "district": "Ludhiana"},
+    "amritsar": {"lat": 31.63, "lon": 74.87, "state": "Punjab", "district": "Amritsar"},
+    "bathinda": {"lat": 30.21, "lon": 74.95, "state": "Punjab", "district": "Bathinda"},
+    "jalandhar": {"lat": 31.33, "lon": 75.58, "state": "Punjab", "district": "Jalandhar"},
+    "patiala": {"lat": 30.34, "lon": 76.38, "state": "Punjab", "district": "Patiala"},
+    "firozpur": {"lat": 30.92, "lon": 74.61, "state": "Punjab", "district": "Firozpur"},
+    "sangrur": {"lat": 30.25, "lon": 75.84, "state": "Punjab", "district": "Sangrur"},
+    # Haryana
     "hisar": {"lat": 29.15, "lon": 75.72, "state": "Haryana", "district": "Hissar"},
     "gurgaon": {"lat": 28.46, "lon": 77.03, "state": "Haryana", "district": "Gurgaon"},
     "jind": {"lat": 29.32, "lon": 76.31, "state": "Haryana", "district": "Jind"},
@@ -34,6 +42,21 @@ SITES = {
     "ambala": {"lat": 30.38, "lon": 76.78, "state": "Haryana", "district": "Ambala"},
     "karnal": {"lat": 29.69, "lon": 76.99, "state": "Haryana", "district": "Karnal"},
     "rohtak": {"lat": 28.90, "lon": 76.61, "state": "Haryana", "district": "Rohtak"},
+    "sirsa": {"lat": 29.53, "lon": 75.03, "state": "Haryana", "district": "Sirsa"},
+    "kurukshetra": {"lat": 29.97, "lon": 76.88, "state": "Haryana", "district": "Kurukshetra"},
+    "panipat": {"lat": 29.39, "lon": 76.97, "state": "Haryana", "district": "Panipat"},
+    "sonipat": {"lat": 28.99, "lon": 77.02, "state": "Haryana", "district": "Sonipat"},
+    # Western Uttar Pradesh
+    "meerut": {"lat": 28.98, "lon": 77.71, "state": "Uttar Pradesh", "district": "Meerut"},
+    "aligarh": {"lat": 27.89, "lon": 78.08, "state": "Uttar Pradesh", "district": "Aligarh"},
+    "agra": {"lat": 27.18, "lon": 78.01, "state": "Uttar Pradesh", "district": "Agra"},
+    "muzaffarnagar": {"lat": 29.47, "lon": 77.70, "state": "Uttar Pradesh", "district": "Muzaffarnagar"},
+    "mathura": {"lat": 27.49, "lon": 77.67, "state": "Uttar Pradesh", "district": "Mathura"},
+    # Rajasthan
+    "ganganagar": {"lat": 29.90, "lon": 73.88, "state": "Rajasthan", "district": "Ganganagar"},
+    "hanumangarh": {"lat": 29.58, "lon": 74.32, "state": "Rajasthan", "district": "Hanumangarh"},
+    "alwar": {"lat": 27.55, "lon": 76.63, "state": "Rajasthan", "district": "Alwar"},
+    "bharatpur": {"lat": 27.22, "lon": 77.49, "state": "Rajasthan", "district": "Bharatpur"},
 }
 
 SEASON_START = (11, 1)   # month, day
