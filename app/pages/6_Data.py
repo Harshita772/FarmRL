@@ -57,7 +57,7 @@ files = section("Crop yields and fertiliser", r"yield_fit_table\.csv", "ICRISAT 
 if files:
     t = pd.read_csv(P / files[0])
     st.caption(f"{len(t)} district-years · states: {', '.join(sorted(t['state'].unique()))} · "
-               f"{t['district'].nunique()} districts · {t['year'].min()}–{t['year'].max()}")
+               f"{t['district'].nunique()} districts · {t['year'].min()}-{t['year'].max()}")
     by = "district" if t["district"].nunique() <= 12 else "state"      # too many districts to tell apart
     trend = t if by == "district" else t.groupby(["state", "year"], as_index=False)["yield_q_ha"].mean()
     common.chart(interactive.line(trend, "year", "yield_q_ha", f"Yield by {by}" + (" (mean of districts)" if by == "state" else ""), "q/ha", group=by))
@@ -101,7 +101,7 @@ files = section("Pesticide use (FAO)", r"fao_.+\.csv",
                 "national series, pesticide use is the total for all crops.")
 if files:
     f = pd.read_csv(P / files[0])
-    st.caption(f"{len(f)} years, {f['year'].min()}–{f['year'].max()} · pesticide measure: {f['normalisation'].iloc[0]} · "
+    st.caption(f"{len(f)} years, {f['year'].min()}-{f['year'].max()} · pesticide measure: {f['normalisation'].iloc[0]} · "
                f"{int((f['source'] != 'yield_df.csv').sum())} year(s) restored from the source files")
     a, b = st.columns(2)
     with a:
@@ -121,7 +121,7 @@ if files:
     lo, hi = cal["interval_90"]
     used = run.meta["yield_model"].get("pest_loss")
     st.markdown(f"**Calibrated pesticide loss:** L = {cal['estimate']:.2f} ± {cal['std_err']:.2f} "
-                f"(90% interval {lo:.2f}–{hi:.2f}), n = {cal['n_obs']} national years. {cal['quality_note'].capitalize()}. "
+                f"(90% interval {lo:.2f}-{hi:.2f}), n = {cal['n_obs']} national years. {cal['quality_note'].capitalize()}. "
                 f"Controls: {', '.join(cal['controls'])}"
                 + (f"; no variation in the series for: {', '.join(cal['controls_dropped_no_variation'])}" if cal["controls_dropped_no_variation"] else "")
                 + f". **This run used L = {used:.2f}.**")

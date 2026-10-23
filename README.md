@@ -2,7 +2,7 @@
 
 **Team:** Harshita Vachhani (B23EE1026) & Aurindum Banerjee (B23CS1006)  
 **Institution:** Indian Institute of Technology Jodhpur  
-**Course:** CSL3090: Artificial Intelligence (Assignment 2 — Real-Life Use Cases of RL)  
+**Course:** CSL3090: Artificial Intelligence (Assignment 2 - Real-Life Use Cases of RL)  
 **Publication Report:** [2-Page Academic Report (PDF)](report/farmrl_report.pdf) $\cdot$ [LaTeX Source](report/main.tex)  
 **Live Interactive Dashboard:** [https://farmrl.streamlit.app/](https://farmrl.streamlit.app/)
 
@@ -13,7 +13,7 @@
 
 ## 1. Problem Context
 
-Wheat cultivation across the Indo-Gangetic plains follows a six-month Rabi cycle (November to April). Farmers make recurring fortnightly decisions on nitrogen fertilizer ($N$), irrigation water ($W$), and chemical pesticide sprays ($P$), concluding with a market timing choice at harvest ($M$): selling immediately at the seasonal Minimum Support Price (MSP) or storing grain for 1–2 months in anticipation of price rises.
+Wheat cultivation across the Indo-Gangetic plains follows a six-month Rabi cycle (November to April). Farmers make recurring fortnightly decisions on nitrogen fertilizer ($N$), irrigation water ($W$), and chemical pesticide sprays ($P$), concluding with a market timing choice at harvest ($M$): selling immediately at the seasonal Minimum Support Price (MSP) or storing grain for 1-2 months in anticipation of price rises.
 
 Standard government agricultural extension services prescribe fixed, calendar-driven recommendations regardless of transient weather conditions. In northwest India (Punjab and Haryana), this rigid practice has driven:
 - **Severe groundwater depletion:** Tubewell over-pumping has caused regional water tables to drop ~0.5 m/year.
@@ -28,9 +28,9 @@ Standard government agricultural extension services prescribe fixed, calendar-dr
 
 Rather than relying on toy synthetic models, the **FarmRL** Gymnasium environment is empirically calibrated against real Indian agricultural, meteorological, and economic records:
 
-1. **Climate Replay (NASA POWER):** Replays 39 historical seasons (1985–2023) of daily weather for Ludhiana (Punjab) and Karnal (Haryana), tracking precipitation, min/max temperatures, solar radiation, humidity, and Penman-Monteith reference evapotranspiration ($\text{ET}_0$). Seasons 1985–2016 (32 seasons) are used for training; 2017–2023 (7 unseen seasons $\times$ 30 stochastic replicates) are held out for generalization testing.
+1. **Climate Replay (NASA POWER):** Replays 39 historical seasons (1985-2023) of daily weather for Ludhiana (Punjab) and Karnal (Haryana), tracking precipitation, min/max temperatures, solar radiation, humidity, and Penman-Monteith reference evapotranspiration ($\text{ET}_0$). Seasons 1985-2016 (32 seasons) are used for training; 2017-2023 (7 unseen seasons $\times$ 30 stochastic replicates) are held out for generalization testing.
 2. **Biophysical Yield Response (ICRISAT-TCI):** Harvest yield (q/ha) is modeled through a panel regression fitted on 1,719 district-year observations across 13 Indian states ($R^2 = 0.512$ held out with state fixed effects). It integrates a Mitscherlich nitrogen curve, FAO-33 water deficit response, stage-specific aeration hypoxia (FAO-66), pest damage ($L_p$), and heat-stress days.
-3. **Cost Calibration (CACP & RBI):** Official CACP (2024–25) wheat cultivation cost tables:
+3. **Cost Calibration (CACP & RBI):** Official CACP (2024-25) wheat cultivation cost tables:
    - Nitrogen fertilizer: $c_N = 12.9\text{ INR/kg}$
    - Irrigation delivery: $c_W = 2.86\text{ INR/mm}$
    - Chemical pesticide: $c_P = 1{,}183\text{ INR/dose}$
@@ -54,7 +54,7 @@ Rather than relying on toy synthetic models, the **FarmRL** Gymnasium environmen
 
 ## 3. Benchmarking & Baseline Results
 
-All policies are evaluated across 7 unseen held-out test seasons (2017–2023, 30 stochastic replicates/season) in Punjab:
+All policies are evaluated across 7 unseen held-out test seasons (2017-2023, 30 stochastic replicates/season) in Punjab:
 
 ![Held-out net profit distributions](report/figures/profit_distribution.png)
 

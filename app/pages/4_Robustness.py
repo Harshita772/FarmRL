@@ -47,7 +47,7 @@ else:
     if run.tuning:
         with st.expander("Tuned rule baselines (grid search on the training seasons only)"):
             for name, rec in run.tuning.items():
-                st.markdown(f"**{style.label(name + '_tuned')}** — training {rec['objective']} "
+                st.markdown(f"**{style.label(name + '_tuned')}** - training {rec['objective']} "
                             f"₹{rec['train_score']:,.0f}/ha, against ₹{rec['default_train_score']:,.0f}/ha untuned; "
                             f"{rec['evaluations']:,} settings tried on {len(rec['train_seasons'])} seasons.")
                 st.json({"tuned": rec["params"], "untuned": rec["default_params"]}, expanded=False)
@@ -98,5 +98,5 @@ else:
     common.chart(interactive.compare_runs(group, policies))
     table = interactive.compare_runs_table(group)
     st.dataframe(table.style.format({"PPO profit (INR/ha)": money, "PPO std over seeds": money,
-                                     "Gain over reference": "{:+,.0f}", "Random, % of PPO": "{:.0f}"}, na_rep="–"),
+                                     "Gain over reference": "{:+,.0f}", "Random, % of PPO": "{:.0f}"}, na_rep="-"),
                  hide_index=True, use_container_width=True)

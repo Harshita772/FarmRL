@@ -20,17 +20,17 @@ run, policies = common.setup("Overview")
 
 st.title("🌾 FarmRL: Crop Input Management & Market Timing")
 st.markdown(
-    "Wheat cultivation across Northwest India (Punjab & Haryana) follows a six-month Rabi cycle (November–April). "
+    "Wheat cultivation across Northwest India (Punjab & Haryana) follows a six-month Rabi cycle (November-April). "
     "Farmers make recurring fortnightly decisions on **nitrogen fertilizer**, **tubewell irrigation**, and **chemical pesticide sprays**, "
     "concluding with a harvest market timing choice to **sell immediately** at the seasonal Minimum Support Price (MSP) "
-    "or **store grain** for 1–2 months in anticipation of price rises. **FarmRL** empirically evaluates whether reinforcement "
+    "or **store grain** for 1-2 months in anticipation of price rises. **FarmRL** empirically evaluates whether reinforcement "
     "learning (PPO & critic-free GRPO) can learn state-contingent input policies that outperform standard government extension calendars, "
     "protecting farmer profit while mitigating groundwater overdraft and pesticide resistance."
 )
 st.caption(
     "📄 **Paper:** [2-Page Academic Report (PDF)](https://github.com/Harshita772/FarmRL/blob/main/report/farmrl_report.pdf) · "
     "🐙 **GitHub:** [Harshita772/FarmRL](https://github.com/Harshita772/FarmRL) · "
-    "🏛️ **IIT Jodhpur — CSL3090: Artificial Intelligence**"
+    "🏛️ **IIT Jodhpur - CSL3090: Artificial Intelligence**"
 )
 
 k = interactive.headline(run)

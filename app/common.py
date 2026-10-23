@@ -117,18 +117,24 @@ def setup(title):
         }
 
         /* Rename default 'streamlit app' navigation item in sidebar to 'Overview' */
-        div[data-testid="stSidebarNav"] ul li:first-child a span,
-        a[data-testid="stSidebarNavLink"]:first-child span {
+        div[data-testid="stSidebarNav"] ul > li:first-child a span {
             visibility: hidden !important;
             position: relative !important;
         }
-        div[data-testid="stSidebarNav"] ul li:first-child a span::after,
-        a[data-testid="stSidebarNavLink"]:first-child span::after {
+        div[data-testid="stSidebarNav"] ul > li:first-child a span::after {
             visibility: visible !important;
             position: absolute !important;
             left: 0 !important;
             top: 0 !important;
             content: "Overview" !important;
+        }
+        /* Ensure all subsequent navigation items explicitly retain their original page names */
+        div[data-testid="stSidebarNav"] ul > li:not(:first-child) a span {
+            visibility: visible !important;
+        }
+        div[data-testid="stSidebarNav"] ul > li:not(:first-child) a span::after {
+            display: none !important;
+            content: none !important;
         }
         </style>
     ''', unsafe_allow_html=True)
@@ -196,7 +202,7 @@ def setup(title):
 
                 # Display the first and last training seasons.
                 "train seasons": (
-                    f"{meta['train_seasons'][0]}–"
+                    f"{meta['train_seasons'][0]}-"
                     f"{meta['train_seasons'][-1]}"
                 ),
 
