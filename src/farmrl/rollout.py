@@ -36,7 +36,7 @@ def run_episode(env, policy, season=None, seed=None, policy_name=None):
     season_etc = float((np.asarray(env.dyn["kc"]) * env._wx[:, 1]).sum())
     fixed = env.costs.get("fixed_per_ha", 0.0)
     name = policy_name or getattr(policy, "__name__", "policy")
-    rows, done, cum_profit = [], False, 0.0
+    rows, done, cum_profit, penalties_accrued = [], False, 0.0, 0.0
     while not done:
         t = env.t
         action = np.asarray(policy(obs, env)).astype(int)
@@ -52,12 +52,16 @@ def run_episode(env, policy, season=None, seed=None, policy_name=None):
         done = term or trunc
         cost = env.cum_cost - cost0
         cum_profit -= cost
+        step_penalty = env.cum_penalty - pen0
+        penalties_accrued += step_penalty
         if done:
             cum_profit += info["revenue"] - fixed
-        row.update({"input_cost": cost, "penalty": env.cum_penalty - pen0,
+        net_return = cum_profit - penalties_accrued
+        row.update({"input_cost": cost, "penalty": step_penalty,
                     "pumping_cost": env.cum_pump_cost - pump0, "aeration_stress": env.last_stress,
                     "store_months": info.get("store_months", 0) if done else 0,
                     "reward": reward * env.reward_scale, "cum_profit": cum_profit,
+                    "penalties_accrued": penalties_accrued, "net_return": net_return,
                     "crop_growth": env.cum_eta / season_etc, "pest_damage": env.pest_damage,
                     "et_ratio": env.cum_eta / env.cum_etc, "soil_moisture_end": env.soil_moist})
         rows.append(row)
@@ -65,6 +69,10 @@ def run_episode(env, policy, season=None, seed=None, policy_name=None):
     df["final_yield"] = info["yield"]
     df["final_revenue"] = info["revenue"]
     df["final_profit"] = info["profit"]
+    df["total_penalties"] = info.get("penalty", penalties_accrued)
+    df["final_net_return"] = info["profit"] - info.get("penalty", penalties_accrued)
+    df["final_penalty"] = df["total_penalties"]
+    df["final_reward"] = df["final_net_return"]
     df["final_sale_price"] = info["sale_price"]
     df["final_storage_cost"] = info["storage_cost"]
     df["final_waterlog_loss"] = info["waterlog_loss"]

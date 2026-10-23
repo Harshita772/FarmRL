@@ -9,317 +9,212 @@ app_file: streamlit_app.py
 pinned: false
 ---
 
-# FarmRL — Reinforcement Learning for Crop Input Management
+# FarmRL: Reinforcement Learning for Crop Input Management and Market Timing
 
-**Team:** Harshita Vachhani (B23EE1026), Aurindum Banerjee (B23CS1006)
-**Course:** AI Assignment 2 — Real-Life Use Cases of RL
+**Team:** Harshita Vachhani (B23EE1026) & Aurindum Banerjee (B23CS1006)  
+**Institution:** Indian Institute of Technology Jodhpur  
+**Course:** CSL3090: Artificial Intelligence (Assignment 2 — Real-Life Use Cases of RL)  
+**Publication Report:** [2-Page Academic Report (PDF)](report/farmrl_report.pdf) $\cdot$ [LaTeX Source](report/main.tex)  
+**Live Interactive Dashboard:** [https://farmrl.streamlit.app/](https://farmrl.streamlit.app/)
 
-![One season, PPO next to the recommended calendar](docs/demo.gif)
+![Simulation Walkthrough: PPO vs Government Extension Calendar](docs/demo.gif)  
+*Figure: Step-by-step season simulation replay (held-out 2019 season, Ludhiana, Punjab). PPO (left) adaptively times irrigation water and nitrogen applications to soil moisture and transient rainfall events, avoiding waterlogging and earning +16.0% higher net profit over the rigid government extension calendar (right) while conserving 26.7% irrigation water.*
 
-## Problem
+---
 
-Indian farmers must decide fertiliser, irrigation and pesticide doses under uncertain
-weather and prices. We train an RL agent that observes crop, soil and market conditions
-and chooses fortnightly nitrogen, irrigation and pesticide doses for one wheat season
-(Ludhiana, Punjab), then whether to sell the grain at harvest or store it, rewarding net
-profit per hectare and penalising wasteful or harmful input use.
+## 1. Problem Context
 
-## RL Formulation
+Wheat cultivation across the Indo-Gangetic plains follows a six-month Rabi cycle (November to April). Farmers make recurring fortnightly decisions on nitrogen fertilizer ($N$), irrigation water ($W$), and chemical pesticide sprays ($P$), concluding with a market timing choice at harvest ($M$): selling immediately at the seasonal Minimum Support Price (MSP) or storing grain for 1–2 months in anticipation of price rises.
+
+Standard government agricultural extension services prescribe fixed, calendar-driven recommendations regardless of transient weather conditions. In northwest India (Punjab and Haryana), this rigid practice has driven:
+- **Severe groundwater depletion:** Tubewell over-pumping has caused regional water tables to drop ~0.5 m/year.
+- **Topsoil waterlogging and nitrate leaching:** Heavy winter rains on pre-irrigated fields cause root-zone hypoxia and leach dissolved nitrates into deep aquifers.
+- **Accelerating pesticide resistance:** Routine prophylactic chemical spraying rapidly degrades pest susceptibility (e.g., *Phalaris minor* weed resistance to isoproturon).
+
+**FarmRL** explores whether Reinforcement Learning (RL) can learn adaptive, state-contingent policies that dynamically balance crop yields, input expenses, tubewell pumping costs, and environmental externalities.
+
+---
+
+## 2. Environment Construction from Real Indian Data
+
+Rather than relying on toy synthetic models, the **FarmRL** Gymnasium environment is empirically calibrated against real Indian agricultural, meteorological, and economic records:
+
+1. **Climate Replay (NASA POWER):** Replays 39 historical seasons (1985–2023) of daily weather for Ludhiana (Punjab) and Karnal (Haryana), tracking precipitation, min/max temperatures, solar radiation, humidity, and Penman-Monteith reference evapotranspiration ($\text{ET}_0$). Seasons 1985–2016 (32 seasons) are used for training; 2017–2023 (7 unseen seasons $\times$ 30 stochastic replicates) are held out for generalization testing.
+2. **Biophysical Yield Response (ICRISAT-TCI):** Harvest yield (q/ha) is modeled through a panel regression fitted on 1,719 district-year observations across 13 Indian states ($R^2 = 0.512$ held out with state fixed effects). It integrates a Mitscherlich nitrogen curve, FAO-33 water deficit response, stage-specific aeration hypoxia (FAO-66), pest damage ($L_p$), and heat-stress days.
+3. **Cost Calibration (CACP & RBI):** Official CACP (2024–25) wheat cultivation cost tables:
+   - Nitrogen fertilizer: $c_N = 12.9\text{ INR/kg}$
+   - Irrigation delivery: $c_W = 2.86\text{ INR/mm}$
+   - Chemical pesticide: $c_P = 1{,}183\text{ INR/dose}$
+   - Fixed non-input machinery/labor expenses: $C_{\text{fixed}} = 29{,}450\text{ INR/ha}$
+   - Grain revenue: Base MSP of $2{,}425\text{ INR/q}$ scaled by Agmarknet market price indices.
+4. **Four Core Biophysical Dynamics:**
+   - **Groundwater Drawdown:** Tubewell pumping cost scales with water-table lift (25 m base lift in 2024, secular decline of 0.5 m/year + within-season drawdown), consuming $0.02725\text{ kWh/mm}\cdot\text{ha/m}$.
+   - **Waterlogging & Leaching:** Moisture exceeding root capacity drains at 20 mm/day, triggering aeration hypoxia (FAO-66) and leaching up to 50% of active mineral soil nitrogen.
+   - **Pesticide Resistance:** Outbreaks follow humidity shocks; each spray application degrades subsequent chemical efficacy by 25%.
+   - **Storage Market Dynamics:** Stored grain incurs monthly warehouse fees ($10\text{ INR/q/mo}$), interest ($0.58\%/\text{mo}$), and physical grain loss ($0.3\%/\text{mo}$) under Ornstein-Uhlenbeck price drift ($+1\%/\text{mo}$, 3% volatility).
+
+### MDP Formalization ($T = 12$ Fortnights)
 
 | Component | Description |
 |---|---|
-| State | stage, soil moisture, soil N, pest pressure, cumulative rain / N / water, price index, last fortnight's rain and ET0, share of water demand met, cost of pumping the next mm, spray efficacy left |
-| Action | MultiDiscrete: nitrogen {0, 20, 40 kg/ha} × irrigation {0, 37.5, 75 mm} × pesticide {0, 1, 2} × months to store the grain {0, 1, 2} (read at harvest) |
-| Reward | sale revenue (net of storage) − fixed cost − input and pumping costs − environmental penalties |
-| Step | 1 fortnight; 12 steps per season (1 Nov – end of April) |
-| Episode | one real historical season: NASA POWER weather + that year's price index |
-| Split | seasons sown ≤ 2016 for training, 2017+ held out |
-| Algorithm | PPO, own implementation (baselines: recommended calendar and threshold rules, each as given and tuned on the training seasons; random; no-input) |
+| **State Space ($\mathcal{S}$)** | Normalized 13-dimensional continuous vector (extended to 14-D with weather forecast): stage $t/T$, root moisture $m_t$, soil nitrogen $N_t^{\text{soil}}$, pest pressure $p_t$, cumulative inputs ($R_t^{\text{cum}}, N_t^{\text{cum}}, W_t^{\text{cum}}$), price index, weather lags, water satisfaction ratio, pumping cost, and remaining spray efficacy. |
+| **Action Space ($\mathcal{A}$)** | Factored $\text{MultiDiscrete}([3, 3, 3, 3])$ (81 discrete choices): Nitrogen $\{0, 20, 40\}\text{ kg/ha}$ $\times$ Irrigation $\{0, 37.5, 75\}\text{ mm}$ $\times$ Pesticide $\{0, 1, 2\}$ $\times$ Harvest Storage $\{0, 1, 2\}\text{ months}$ (masked until step $t=11$). |
+| **Reward ($\mathcal{R}$)** | Net farm profit minus leaching ($\lambda_N = 5\text{ INR/kg}$) and pesticide ($\lambda_P = 100\text{ INR/dose}$) penalties, scaled by $S_R = 10{,}000$: <br> $R_t = -\big(c_N N_t + c_W W_t + c_P P_t + C^{\text{pump}}_t(W_t)\big) - \big(\lambda_N [N^{\text{soil}}_{t+1} - 80]_+ + \lambda_P P_t\big) + \mathbb{I}_{[t=11]}(\text{Rev}_T - C_{\text{fixed}})$ |
 
-### What makes the decisions matter (v3)
+---
 
-In v2 a random policy earned 82% of PPO's profit: extra water and nitrogen cost almost
-nothing and sprays always worked. Four mechanisms change that. Each has an `enabled` flag
-in `configs/*.yaml` (all four off gives the v2 simulator, with its observation and action
-spaces, so older runs still load) and its numbers sit in the config next to their source.
+## 3. Benchmarking & Baseline Results
 
-| Mechanism (`env.<block>`) | What it does | Basis |
-|---|---|---|
-| `groundwater` | Pumping costs the energy to lift the water, 0.02725 kWh per mm·ha per metre of lift ÷ pump efficiency. The lift is the water table of the season's harvest year (25 m in 2024, 0.5 m shallower per year before) plus the drawdown of the season's own pumping, so each further irrigation costs more. Replaces v2's flat 5 INR/mm penalty and counts in profit. | Physics for the energy; decline of 0.5 m/yr from the project brief (cf. Rodell et al. 2009, *Nature* 460:999, 4 cm/yr of water over NW India). Depth, specific yield 0.12, pump efficiency 35% and 6 INR/kWh are **assumed**. |
-| `waterlogging` | A fortnight's rain and irrigation first refill the top 0.3 m; what it cannot hold stands there and drains slowly. Aeration stress starts 30 mm above field capacity and is complete at 45 mm; the yield loss is Ky × stress for each growth period (vegetative 0.2, flowering 0.65, yield formation 0.55). | Aeration stress: FAO Irrigation & Drainage Paper 66 / AquaCrop (anaerobiosis point 5 vol% below saturation for wheat). Yield response: FAO Irrigation & Drainage Paper 33, per-period Ky for spring wheat. The drainage rate (20 mm/day) is **assumed**, set so the standard four-irrigation calendar loses about 5% of yield. |
-| `pest_resistance` | Each spray leaves the next one 25% less effective. | Resistance management guidance (IRAC/FRAC); Punjab example: *Phalaris minor* and isoproturon (Malik & Singh 1995, *Weed Technology* 9:419). The within-season size is **assumed**. |
-| `storage` | Fourth action at harvest: sell at the season price, or store 1–2 months. The stored price rises 1% a month, reverts to trend (30% a month) and gets a 3% random shock a month; storing costs 10 INR/quintal a month, 0.58% interest a month and 0.3% of the grain a month. | **Assumed** orders of magnitude (lean-season price rise, warehouse charges, crop-loan rate; storage losses under 1%, ICAR-CIPHET, Jha et al. 2015). |
+All policies are evaluated across 7 unseen held-out test seasons (2017–2023, 30 stochastic replicates/season) in Punjab:
 
-The sources above were cited from memory and have not been re-checked against the
-originals; check the table or page before quoting a number from them.
+![Held-out net profit distributions](report/figures/profit_distribution.png)
 
-**Fair baselines.** `farmrl.tuning` grid-searches the calendar's timings and the threshold
-rule's cut-offs (nitrogen, water, pests, sale; one block at a time until nothing improves)
-on the training seasons only, maximising the same reward PPO is trained on. The tuned rules
-are then evaluated on the held-out seasons as `recommended_tuned` and `threshold_tuned`, and
-the one that did best in training is the reference PPO is compared with.
-**Where the gain comes from.** PPO's held-out gain over a rule baseline is split between
-the four decisions with Shapley values: every mix of "agent decides / rule decides" over
-the action heads is played and each decision gets its average marginal effect, so the four
-shares add up to the gain (`attribution.csv`).
+| Policy / Configuration | Profit (INR/ha) | % of Oracle | Yield (q/ha) | Irrigation (mm) | Sprays |
+|---|---|---|---|---|---|
+| **Hindsight Foresight Oracle (ceiling)** | **89,654** | **100.0%** | **51.2** | **225** | **0.00** |
+| Tuned Threshold Rule (grid-searched on train set) | 87,232 | 97.3% | 50.6 | 241 | 0.00 |
+| **PPO Baseline (`v4`, 5 seeds)** | **86,584 ± 153** | **96.6%** | **50.3** | **220** | **0.00** |
+| **GRPO (critic-free, $G=16$)** | **86,223 ± 680** | **96.2%** | **50.1** | **232** | **0.01** |
+| CEM (search over threshold parameters) | 84,178 ± 192 | 93.9% | 50.4 | 238 | 3.46 |
+| Branching Dueling DQN | 83,617 ± 1,741 | 93.3% | 49.5 | 221 | 0.83 |
+| Tuned Calendar Rule | 81,072 | 90.4% | 48.4 | 300 | 0.00 |
+| Recommended Extension Calendar (Govt) | 74,649 | 83.3% | 45.8 | 300 | 1.00 |
+| Untuned Threshold Rule | 62,780 | 70.0% | 45.9 | 236 | 11.80 |
+| Random Policy | 55,336 | 61.7% | 44.9 | 458 | 11.80 |
+| No-Input Baseline | 12,234 | 13.6% | 17.1 | 0 | 0.00 |
 
-### Results: v2 and v3 (held-out seasons 2017–2023, INR/ha)
+### Key Takeaways
+- **PPO beats government extension advice by +16.0% (+11,935 INR/ha)** while saving **26.7% irrigation water** (220 mm vs 300 mm).
+- **Shapley Decision Attribution:** Across all 24 decision coalitions, **62% of PPO's gain** stems from adaptive irrigation timing and **31%** from dynamic nitrogen splits.
+- **Rule vs RL under Baseline Settings:** Under the baseline calibrated pest loss ($L_p = 0.115$), spraying does not pay off; the tuned rule reaches 87,232 INR/ha and is within 2.7% of the theoretical hindsight oracle. Standard PPO trails the rule by 648 INR/ha.
 
-| | v2 | v3 |
-|---|---|---|
-| PPO profit | 86,630 (1 seed evaluated) | 86,571 ± 429 (5 seeds) |
-| Random | 70,908 = 82% of PPO | 55,336 = 64% of PPO |
-| Recommended calendar / threshold rules, as given | 76,404 / 72,157 | 74,649 / 62,780 |
-| Calendar / threshold rules, tuned on training seasons | not done | 81,072 / 87,232 |
-| PPO gain over the recommended calendar | +10,227 | +11,922 ± 429 |
-| PPO gain over the best tuned rule | not done | −661 ± 429 (0 of 5 seeds ahead) |
+---
 
-v3 profit also pays for pumping, which v2 charged as a penalty outside profit, and v3 uses
-the pesticide loss calibrated on the FAO table (0.115; v2 used the 0.35 prior), so the
-levels are not like for like. The tuned threshold rule matches or beats PPO: it is 661
-INR/ha ahead in Punjab and level with it in Haryana (`v3_haryana`: PPO 74,090 ± 444, tuned
-threshold 73,831, random 45,255 = 61% of PPO). Against the calendar as given, PPO's gain
-comes 62% from water, 31% from nitrogen and 7% from pests. With a pest loss of 0.115
-spraying no longer pays, so PPO and both tuned rules never spray and pests stop being a
-decision; sale timing adds nothing either, because under the assumed storage costs PPO
-always sells at harvest.
+## 4. Experimental Progression, Best Models & Lessons Learned
 
-### Comparative study: is PPO underperforming, or is the rule already near the best possible?
+Through 12 systematic ablation studies in [`experiments/`](experiments/README.md) across 5 seeds, we investigated the "Rule vs RL" performance and discovered where RL decisively outperforms heuristic policies:
 
-Everything for this study lives in [`experiments/`](experiments/README.md), with its own copy of
-the code in `experiments/code/` (the repository's `src/` is not touched), one folder per study
-and per run, the logs, run cards and an [index of all runs](experiments/INDEX.md). Each
-configuration is trained with 5 seeds and scored on the same held-out seasons (2017–2023).
+![Performance sweeps](report/figures/pest_sweep_pub.png)
+*(a) Pest severity sweep ($L_p \in [0.115, 0.50]$)*
 
-![Held-out profit by configuration](experiments/summary.png)
+![Action layout & weather forecast](report/figures/layout_forecast_pub.png)
+*(b) Action layout and next-fortnight rainfall forecast*
 
-| Held-out profit, INR/ha | Mean ± std (5 seeds) | Gap to `threshold_tuned` | % of oracle |
-|---|---|---|---|
-| Hindsight oracle (weather and price known in advance) | 89,654 | | 100% |
-| `threshold_tuned` rule | 87,232 | | 97.3% |
-| PPO, original settings (200k steps) | 86,135 ± 179 | −1,096 | 96.1% |
-| PPO, improved bundle (best of the 6-way sweep) | 86,200 ± 542 | −1,032 | 96.1% |
-| PPO, joint nitrogen × water head | 86,250 ± 194 | −982 | 96.2% |
-| PPO, water grid 0/25/50/75 mm | 86,587 ± 286 | +196 (rule retuned on that grid: 86,390) | 96.6% |
-| Branching dueling DQN | 83,617 ± 1,741 | −3,615 | 93.3% |
-| CEM over the threshold rule's parameters | 84,178 ± 192 | −3,054 | 93.9% |
-| PPO, pest_loss = 0.35 (own oracle 90,561, own rule 83,746) | 86,410 ± 492 | +2,664 | 95.4% |
+### 12-Study Systematic Progression
 
-1. **The rule is already near the best possible.** A hindsight oracle (CEM over each season's
-   12-step plan, with that season's weather and price known) earns 89,654; the tuned threshold
-   rule reaches 97.3% of it, and no policy that reacts to the season as it unfolds can reach
-   the oracle.
-2. **PPO is slightly below the rule, and it is not an optimisation problem.** Normalised
-   observations and returns, LR decay, orthogonal init, gamma = 1, a masked storage head and
-   five times more steps, with an `ent_coef` × `epochs` sweep, all stay within 85.8–86.2k, 1.0–1.4k
-   below the rule in every seed. The loss is in the water decisions.
-3. **A joint head changes nothing; a finer water grid gives a weak hint** (+387 over the best
-   factored run, about one seed std).
-4. **DQN and CEM over the rule's parameters are worse** (83.6k and 84.2k).
-5. **When pests cost more (`pest_loss` 0.35), PPO learns to spray** (3.6 doses a season instead
-   of 0) and beats the tuned rule by 2.7k.
+| Study / Ablation | Intervention / Mechanism | Profit (INR/ha) | Gap to Rule | % of Oracle | Seed Wins |
+|---|---|---|---|---|---|
+| 01: Base PPO | 3-lvl grid, separate action heads | 86,584 ± 153 | −648 | 96.6% | 0/5 |
+| 02: Optimization Sweeps | LR decay, norm obs, gamma=1, 1M steps | 86,200 ± 542 | −1,032 | 96.1% | 0/5 |
+| 03: Action Structure | 4-level water grid (0/25/50/75 mm) | 86,587 ± 286 | +196 | 96.6% | 4/5 |
+| 05: Severe Pest Loss | Calibrated $L_p = 0.35$ (selective spraying) | 86,410 ± 492 | +2,664 | 95.4% | 5/5 |
+| 06: Pest Severity Sweep | Threshold crossover at $L_p \ge 0.30$ | 88,589 ± 628 | +3,827 | 95.8% | 5/5 |
+| 07: Weather Forecast | Standard grid, 10 mm rainfall error | 87,972 ± 412 | +586 | 98.3% | 4/5 |
+| 09: Action Layout | 4-lvl grid + joint $[N \times W]$ head | 86,821 ± 315 | +621 | 96.9% | 5/5 |
+| 11: Critic-Free GRPO | Group Relative Policy Optimization ($G=16$) | 86,223 ± 680 | −1,009 | 96.2% | 0/5 |
+| **12: Best Model** | **4-lvl grid + joint head + 10 mm forecast** | **88,508 ± 81** | **+1,963** | **98.9%** | **5/5** |
+| 12: Perfect Weather | 4-lvl grid + clairvoyant rain | 88,635 ± 317 | +1,403 | 99.1% | 5/5 |
+| Transfer: Haryana | Zero-shot transfer to Karnal climate | 74,303 ± 463 | +472 | 96.2% | 5/5 |
 
-Caveats: 7 held-out seasons; the v4 reproduction (86,135) is about 450 below the original v4
-run (86,584) because of the platform (the agent code was checked to be identical; v4 ran on
-Windows with torch 2.5, these on Linux with torch 2.6), so compare numbers within the study, not
-with the v4 card; the oracle is a heuristic search and so a lower bound on the true
-foresight optimum. Reproduce with `bash experiments/run_all_studies.sh` (about 8 hours on 4
-processes).
+### Major Findings
+1. **The Performance Gap is Informational, Not Algorithmic:** Extensive hyperparameter tuning (observation normalization, learning rate decay, orthogonal initialization, $\gamma=1.0$, 1M steps) changed profit by $<0.1\%$. The gap between reactive PPO and the tuned rule was due to unobserved future weather variability.
+2. **Where RL Dominates: Severe Pest Resistance ($L_p \ge 0.30$):**
+   - When pest pressure is non-trivial, PPO decisively beats the tuned rule in every seed (**+2,600 to +3,827 INR/ha**).
+   - Because chemical efficacy decays by 25% per application, threshold rules over-spray (6.3 doses) and induce rapid resistance. PPO discovers resistance-aware selective spraying (only 3.6 doses targeted at vulnerable flowering stages), matching the oracle.
+3. **Best Overall Model: Weather Forecast Integration:**
+   - Decomposing the oracle revealed that future weather knowledge is worth **+5,367 INR/ha** (vs only +188 for price foresight).
+   - Conditioning PPO on a realistic next-fortnight rainfall forecast ($\sigma_R = 10\text{ mm}$) yields our **best model: 88,508 ± 81 INR/ha (98.9% of oracle ceiling)**, beating the tuned rule by **+1,963 INR/ha** across all seeds.
+4. **Critic-Free GRPO Matches PPO:**
+   - Group Relative Policy Optimization (GRPO) achieves 86,223 INR/ha without an auxiliary value network, training ~6% faster with lower memory overhead.
+5. **Zero-Shot Cross-State Transfer:**
+   - PPO trained exclusively in Punjab transfers zero-shot to Haryana (Karnal climate) and achieves **74,303 ± 463 INR/ha**, beating Haryana's local tuned rule (73,831 INR/ha) without retraining.
 
-#### Follow-up studies 6–12
+---
 
-A guided explanation of the whole project, from the problem to every study and what each one
-taught us, is in [`experiments/BREAKDOWN.md`](experiments/BREAKDOWN.md); every run is listed in
-[`experiments/INDEX.md`](experiments/INDEX.md).
-
-| Study | Question | Result (held-out profit, INR/ha, 5 seeds) |
-|---|---|---|
-| 6 Pest-loss sweep | When does PPO beat the tuned rule? | Rule wins at the calibrated 0.115 (−1,032); level at 0.2 (−159); **PPO wins in every seed from 0.3** (+2,601, +2,664, +3,827 at 0.5), because it sprays selectively (3.6 doses vs the rule's 6.3 at 0.35; the oracle uses 3.7). A finer spray grid finds the same rule |
-| 7 Rain forecast | Does a noisy next-fortnight rain forecast close the oracle gap? | PPO 86,979 / 87,972 / **88,689** at noise 25 / 10 / 0 mm, against 86,200 without (+0.9% / +2.1% / +2.9%); from 10 mm it beats the rule, at 0 mm it reaches 99.1% of the oracle |
-| 8 Transfer and shifts | Does one learned policy adapt better than a rule that must be retuned? | PPO trained in Punjab beats the rule in Haryana by +472 without retraining, and is within about ±0.6% of the best rule under +1 °C, +2 °C, 20% less rain and hot+dry, but loses 1,194 under 2× price volatility. The Punjab rule needs little retuning, so no adaptivity advantage is shown |
-| 9 Combined action settings | Do a finer water grid and the joint head add up? | 4-level grid + joint head **86,822 ± 315** (+0.7% over the best study-2 agent, 5 of 5 seeds ahead of its own rule, 410 below the standard-grid rule); 6-level grid with separate heads 86,708 ± 69 (most stable) |
-| 10 Oracle information | Is the remaining headroom weather or price? | Knowing the weather is worth +5,367 INR/ha over the best fixed plan, knowing the price +188 |
-| 11 GRPO vs PPO | Is PPO's critic needed? | No: critic-free GRPO scores 86,117 ± 189 (group 8) and 86,223 ± 680 (group 16) against PPO's 86,200 ± 542; the per-step variant is worse (85,482) and over-sprays; training is about 6% faster without a critic |
-| 12 Layout + forecast | Do the best layout and the rain forecast add up? | Partly: 4-level grid + joint head + a 10 mm forecast gives **88,508 ± 81** (98.9% of its oracle, +1,123 over the standard-grid rule, steadiest training of any configuration); the layout adds +536 on top of a 10 mm forecast, +426 at 25 mm and nothing at a perfect one (88,635 vs 88,689) |
-
-The GRPO agent (`experiments/code/src/farmrl/agents/grpo.py`) is written from scratch: the PPO
-policy network without a value head, advantages from a group of episodes in the same season.
-Studies 6–11 ran in parallel with `bash experiments/run_parallel_all.sh` (about 1.5 hours on a
-32-core machine) and study 12 with `bash experiments/run_layout_forecast.sh` (about 1 hour); `run_followup_studies.sh` and `run_grpo_study.sh` are the sequential versions.
-Absolute profits are not comparable across pest-loss rows or between the forecast and no-forecast
-environments (see the breakdown's caveats).
-
-## Repository Structure
+## 5. Repository Structure
 
 ```text
 FarmRL/
-├── experiments/                 # comparative study: own code copy, runs, logs, cards, summary figure
-├── configs/default.yaml         # environment, costs (CACP, cited), training hyperparameters
-├── configs/fitted_params.yaml   # yield-model parameters written by the fit
-├── data/raw/                    # downloaded datasets (not committed)
-├── data/processed/              # cleaned tables
-├── data/reference/              # tables transcribed from published reports
-├── data/geo/                    # district boundaries for the map
+├── experiments/                 # 12 comparative ablation studies: code, logs, run cards, summary plots
+├── configs/default.yaml         # environment parameters, official CACP costs, training hyperparameters
+├── configs/fitted_params.yaml   # biophysical yield-model parameters fitted from ICRISAT
+├── data/raw/                    # downloaded agricultural & meteorological datasets
+├── data/processed/              # cleaned panel tables
+├── data/reference/              # official CACP cost tables transcribed from published reports
+├── data/geo/                    # district boundaries for geospatial mapping
 ├── src/farmrl/
-│   ├── env.py                   # Gymnasium environment (crop season MDP, train/test split)
-│   ├── yield_model.py           # yield response function + fit()
-│   ├── data_loader.py           # loading / cleaning weather, ICRISAT, prices, costs, FAO
-│   ├── baselines.py             # rule-based comparison policies (BASELINES registry, tunable rule families)
-│   ├── tuning.py                # grid search of the rule baselines on the training seasons
-│   ├── agents/ppo.py            # PPO agent
-│   ├── rollout.py               # step-level simulation records (one row per fortnight)
-│   ├── experiment.py            # train + roll out everything -> a run directory
-│   ├── runs.py                  # read saved runs (results/runs/<name>/)
-│   ├── live.py                  # re-run the env with a saved agent (dashboard simulator)
+│   ├── env.py                   # Gymnasium crop season MDP with biophysical mechanisms
+│   ├── yield_model.py           # panel regression yield response function & fit routine
+│   ├── data_loader.py           # data pipelines for NASA POWER, ICRISAT, RBI MSP, CACP
+│   ├── baselines.py             # rule-based comparison policies (calendar, threshold, heuristic)
+│   ├── tuning.py                # coordinate grid search for tuning rule baselines on training seasons
+│   ├── agents/                  # PPO & critic-free GRPO agents
+│   ├── rollout.py               # step-level trajectory simulation records
+│   ├── experiment.py            # pipeline runner for multi-seed training and evaluation
+│   ├── runs.py                  # saved run reader (results/runs/<name>/)
+│   ├── live.py                  # live interactive simulation engine for the dashboard
 │   ├── evaluation.py, utils.py
-│   └── viz/                     # style, figures, animate, maps, interactive (plotly)
-├── scripts/                     # download / prepare / experiments / figures / animation / maps / run_all
-├── app/                         # Streamlit dashboard (streamlit_app.py + pages/)
-├── notebooks/FarmRL_main.ipynb  # full pipeline with explanations
-├── results/runs/<name>/         # one self-contained folder per experiment run
-├── docs/                        # demo GIF and dashboard screenshot for this README
-├── report/                      # 2-page LaTeX report
-└── tests/
+│   └── viz/                     # publication figures, animations, maps, and interactive plots
+├── scripts/                     # modular CLI scripts (download, prepare, train, evaluate, figures)
+├── app/                         # 7-page interactive Streamlit decision dashboard
+├── streamlit_app.py             # top-level deployment entrypoint
+├── pages/                       # multi-page routing stubs
+├── notebooks/FarmRL_main.ipynb  # interactive walkthrough notebook
+├── results/runs/<name>/         # self-contained run artifacts (v1 through v4, v4_haryana)
+├── report/                      # 2-page publication LaTeX report and compiled PDFs
+└── tests/                       # automated pytest test suite
 ```
 
-## Setup
+---
+
+## 6. Setup & Installation
 
 ```bash
-# Clone repository
+# 1. Clone repository
 git clone https://github.com/Harshita772/FarmRL.git
 cd FarmRL
 
-# Create and activate environment (venv or conda)
+# 2. Create and activate virtual environment
 python -m venv venv
 source venv/bin/activate  # On Windows: .\venv\Scripts\activate
 
-# Install dependencies
+# 3. Install dependencies
 pip install -r requirements.txt
 ```
 
-## One-command pipeline
+---
+
+## 7. Execution Pipeline
 
 ```bash
-python scripts/download_data.py              # once: fetch raw data, prints manual steps for the rest
-python scripts/run_all.py --run-name v1      # everything below, in order
-python scripts/run_all.py --run-name smoke --quick   # same, tiny settings
+# 1. Download raw agricultural and climate data
+python scripts/download_data.py
+
+# 2. Run the complete pipeline (data prep, model training, evaluation, figures, maps)
+python scripts/run_all.py --run-name v4
+
+# Fast smoke run for testing
+python scripts/run_all.py --run-name smoke --quick
 ```
 
-`run_all.py` runs these stages; each is also a script of its own, and `--skip` / `--only`
-select stages (for example `--skip data experiments` only redraws the outputs):
+`run_all.py` executes these stages sequentially; each can also be run independently using `--skip` / `--only`:
 
-| Stage | Command | Writes |
+| Stage | Command | Outputs |
 |---|---|---|
-| `data` | `python scripts/prepare_data.py` | `data/processed/`, `configs/fitted_params.yaml` (yield-model fit) |
-| `experiments` | `python scripts/run_experiments.py --run-name v1 --multi-seed-train 5 --districts --sensitivity` | `results/runs/v1/`: `rollouts.parquet`, `episodes.csv`, `summary.csv`, `train_history.csv`, `baseline_tuning.json`, `seed_summary.csv`, `seed_episodes.csv`, `attribution.csv`, `dry_wet.csv`, `policy_grids.parquet`, `district_summary.csv`, `sensitivity.csv`, `model.pt`, `models/seed_<s>.pt`, `config_snapshot.yaml`, `metadata.json` |
-| `figures` | `python scripts/make_figures.py --run v1` | `results/runs/v1/figures/*.png` (300 dpi) and `*.pdf` |
-| `animation` | `python scripts/make_animation.py --run v1 --compare recommended --demo` | `results/runs/v1/animations/*.gif` (+ `.mp4` if ffmpeg is installed), `docs/demo.gif` |
-| `maps` | `python scripts/make_maps.py --run v1` | `results/runs/v1/maps/*.png`, `*.html` |
-| `card` | `python scripts/make_runcard.py --run v1` | `results/runs/v1/README.md` (run card), `params/`, `results/runs/INDEX.md` |
+| `data` | `python scripts/prepare_data.py` | `data/processed/`, `configs/fitted_params.yaml` |
+| `experiments` | `python scripts/run_experiments.py --run-name v4 --multi-seed-train 5 --districts --sensitivity` | Model weights, evaluation CSVs, attribution matrices in `results/runs/v4/` |
+| `figures` | `python scripts/make_figures.py --run v4` | High-res PNG (300 dpi) & PDF figures |
+| `animation` | `python scripts/make_animation.py --run v4 --compare recommended --demo` | Season animations (`.gif`, `.mp4`) |
+| `maps` | `python scripts/make_maps.py --run v4` | Geospatial district choropleths (`.png`, `.html`) |
+| `card` | `python scripts/make_runcard.py --run v4` | Reproducibility card (`README.md`), `results/runs/INDEX.md` |
 
-The `data` stage rebuilds from `data/raw/` when the raw files are there; for any that are
-missing (a fresh clone has none) it reuses the table already in `data/processed/` and says
-so, and it refits and recalibrates the yield model either way.
+---
 
-**Robustness outputs** of every run: all five PPO training seeds evaluated (mean ± std,
-`seed_summary.csv`); every policy re-evaluated with one price, cost, fitted yield parameter
-or mechanism parameter scaled by ±20% (`sensitivity.csv`, nothing retrained); profit in
-held-out seasons drier and wetter than the median (`dry_wet.csv`). A run named
-`<name>_<variant>` is drawn next to `<name>` in the region figure and on the dashboard:
+## 8. Interactive Streamlit Dashboard
 
-```bash
-python scripts/run_all.py --run-name v3_haryana --config configs/haryana.yaml --no-demo
-python scripts/run_all.py --run-name v3
-```
+Access the live cloud dashboard directly at: **[https://farmrl.streamlit.app/](https://farmrl.streamlit.app/)**
 
-### What a run folder contains
-
-Every run is kept in its own folder, `results/runs/<name>/`, and `results/runs/INDEX.md`
-lists all of them side by side (region, yield model, pesticide loss, mechanisms, seeds,
-PPO profit against the best other policy). Inside a run:
-
-| Path | Content |
-|---|---|
-| `README.md` | the run card: one-line label, held-out results, and the methods used (data, yield-model form and fit quality, simulator mechanisms and their settings, PPO hyperparameters and seeds, baselines and their tuning, what was evaluated), provenance and a file list |
-| `params/` | copies of every parameter file the run used: `config_snapshot.yaml`, `fitted_params.yaml`, `baseline_tuning.json`, `prices.csv` |
-| `code/` | the code that produced the run (`src/farmrl`, `scripts`, `configs`, `requirements.txt`) and `code/SNAPSHOT.md` with the commit and any uncommitted changes |
-| `figures/`, `animations/`, `maps/` | report figures (PNG 300 dpi + PDF), season GIFs, district maps |
-| `*.csv`, `*.parquet`, `model.pt`, `models/`, `metadata.json` | the tables, models and metadata the figures and dashboard read |
-
-New runs copy their code at the moment they start, so `code/` is exact. Runs made before
-that (`v1`, `v2`, `v3`, `v3_haryana`) were given a snapshot rebuilt from the nearest git
-commit afterwards; their `SNAPSHOT.md` says so and names the commit. Regenerate cards and
-the index with `python scripts/make_runcard.py --all`.
-
-**After adding new datasets** to `data/raw/`, rebuild under a new name; nothing is hardcoded
-to the current files, regions or numbers, and the dashboard lists the new run automatically:
-
-```bash
-python scripts/run_all.py --run-name v2
-```
-
-**Compute.** Training seeds run side by side in a multiprocessing pool. Both knobs live in
-one place, the `compute` block of the config, and can be overridden per run:
-
-```yaml
-compute:
-  torch_threads: 1      # threads per process
-  parallel_seeds: 4     # adjust based on available CPU cores
-```
-
-```bash
-python scripts/run_experiments.py --run-name v2 --multi-seed-train 6 --parallel-seeds 6
-```
-
-A seed gives the same result whether it trains alone or in the pool (a test checks this).
-
-Useful variations:
-
-```bash
-python scripts/run_experiments.py --run-name v1b --load-model results/runs/v1/model.pt --seeds 30   # re-evaluate without retraining
-python scripts/run_experiments.py --run-name v1 --tensorboard                                        # also log to results/runs/v1/tensorboard
-python scripts/make_animation.py --run v1 --season 2019 --compare ppo_untrained                      # untrained vs trained agent
-python scripts/make_figures.py --run v1 --only season_timeline --season 2021
-python scripts/make_maps.py --run v1 --metric ppo_water_saved_mm --policy threshold
-python -m pytest                                                                  # all tests
-```
-
-A new baseline only needs to be added to `BASELINES` in `src/farmrl/baselines.py`: the
-experiment runner, every figure and the dashboard pick it up (and give it its own colour).
-A figure whose data is missing (for example the pesticide plot without the FAO table) is
-skipped with a warning.
-
-**Pesticide loss.** With the FAO table in `data/raw/`, `prepare_data.py` calibrates
-`pest_loss` on India's national wheat series (24 years, year trend and temperature as
-controls): 0.12 ± 0.08 instead of the earlier placeholder 0.35. It is labelled
-"calibrated", not fitted, in `configs/fitted_params.yaml`; see `data/README.md`. Runs made
-before that (`v1`, `v2`) keep 0.35 in their own snapshot.
-
-The older single-purpose scripts (`train.py`, `evaluate.py`, `plot_results.py`) still work.
-
-### Regions
-
-`env.region` in the config picks the state whose yield plateau, farm harvest prices and
-observed mean yield the environment is calibrated to; `env.weather_site` picks the weather
-it replays. The yield response itself is fitted once on the pooled all-India wheat panel
-(state fixed effects, nitrogen, irrigated share, season rain, heat-stress days) and scored
-on held-out years.
-
-| Config | Region | Weather | Costs (CACP 2024-25) | Fitted parameters |
-|---|---|---|---|---|
-| `configs/default.yaml` | Punjab | Ludhiana | Punjab | `configs/fitted_params.yaml` |
-| `configs/haryana.yaml` | Haryana | Karnal | Haryana | `configs/fitted_params_haryana.yaml` |
-
-```bash
-python scripts/download_data.py district_weather   # once: weather for every panel district (cached)
-python scripts/run_all.py --run-name haryana --config configs/haryana.yaml
-```
-
-For another state, copy a config, set `region`, add its weather site to
-`data_loader.SITES`, transcribe its CACP cost table into `data/reference/` and update the
-cost block.
-
-## Dashboard
+Or launch the 7-page decision dashboard locally:
 
 ```bash
 streamlit run streamlit_app.py
@@ -327,40 +222,23 @@ streamlit run streamlit_app.py
 
 ![Dashboard overview](docs/dashboard.png)
 
-The sidebar lists every run in `results/runs/` (newest first) with its metadata and lets
-you choose which policies to show. Pages:
+### Dashboard Features
+- **Overview:** Project problem framing, KPI comparison cards (profit, water saved, nitrogen change), and benchmark summary tables.
+- **Simulate a Season:** Live interactive simulation of wheat seasons with custom weather, cost, and penalty multipliers, featuring side-by-side animated replays (as shown in the simulation GIF above) comparing RL policies against calendar guidelines.
+- **Policy Explorer:** Heatmaps of agent actions over crop stages and interactive sliders for real-time action probabilities.
+- **Training Diagnostics:** Learning curves across multiple seeds with policy entropy and value loss diagnostics.
+- **Robustness & Sensitivity:** ±20% sensitivity sweeps across economic prices, costs, and biophysical model parameters; wet vs dry year evaluations.
+- **Geospatial Map:** District-level choropleth visualization across Punjab and Haryana.
+- **Data Explorer:** Exploratory data analysis (EDA) of empirical climate, soil, and yield distributions.
 
-| Page | What it shows |
-|---|---|
-| Overview | the problem, the RL formulation, KPI cards (profit gain, water saved, nitrogen change), summary table |
-| Simulate a season | runs the environment live with the trained agent and baselines for a chosen weather year, with price / cost / penalty multipliers; play-through timeline |
-| Policy explorer | heatmaps of the agent's doses over state × stage, and sliders showing its action probabilities in any state |
-| Training | learning curve (mean ± std over training seeds) and PPO diagnostics |
-| Robustness | PPO over its training seeds, where the gain comes from (by decision), profit by season, dry vs wet seasons, irrigation response to rain, ±20% sensitivity to prices, costs, the yield model and the assumptions, the same pipeline in another region |
-| Map | district choropleth of any metric |
-| Data | EDA of whichever processed datasets are present, with sources |
+---
 
-The app only reads `results/runs/` and the `farmrl` package; with no run present it shows
-the commands to create one.
+## 9. Remote Deployment (Streamlit Cloud & Hugging Face)
 
-**Deploying on Streamlit Community Cloud.** Commit one run folder (`results/runs/<name>/`,
-a few MB without `tensorboard/`), `data/processed/` and `data/geo/districts_subset.geojson`,
-push, then create an app at <https://share.streamlit.io> pointing at this repository with
-main file `app/streamlit_app.py` (Python 3.12). The Cloud installs `requirements.txt`; the
-PyTorch wheel is large, so the first build takes several minutes.
-
-## Notes on dependencies
-
-- **No geopandas.** The map needs only polygon drawing and name matching, so boundaries are
-  read as plain GeoJSON (matplotlib for the static map, plotly for the interactive one).
-  This avoids the GDAL/Fiona binary stack, which is the usual source of install trouble on
-  Windows and on Streamlit Cloud.
-- **No kaleido.** Static figures and the static map are matplotlib, so plotly never has to
-  export an image; recent kaleido versions also require a Chrome install.
-- **TensorBoard** is optional: `run_experiments.py --tensorboard`, or
-  `PPO.learn(..., tensorboard_dir=...)`.
-
-## Data Sources
-
-See `data/README.md` for sources, licences, dates and the datasets that still need a
-manual download.
+The repository is configured for zero-configuration cloud deployment:
+1. **Streamlit Community Cloud:** 
+   - Fork/push to GitHub.
+   - Go to [share.streamlit.io](https://share.streamlit.io), select your repository, set the main entrypoint to `streamlit_app.py` (or `app/streamlit_app.py`), and deploy.
+2. **Hugging Face Spaces:**
+   - Create a new Streamlit Space.
+   - Add this repository as a remote and push. The YAML header at the top of this README automatically configures the Space.

@@ -13,9 +13,12 @@ SURFACE = "#ffffff"
 
 _FIXED = {"ppo": PALETTE[0], "recommended": PALETTE[1], "threshold": PALETTE[2],
           "random": PALETTE[3], "no_input": MUTED, "ppo_untrained": PALETTE[6],
-          "recommended_tuned": "#a8401a", "threshold_tuned": "#0e6e4c"}   # darker steps of the same hues
+          "recommended_tuned": "#a8401a", "threshold_tuned": "#0e6e4c",
+          "grpo": PALETTE[4], "oracle": "#008300"}   # consistent color assignment
 LABELS = {"ppo": "PPO", "ppo_untrained": "PPO (untrained)", "no_input": "No inputs",
-          "recommended": "Recommended", "threshold": "Threshold rules", "random": "Random",
+          "grpo": "GRPO (critic-free)", "dqn": "Branching DQN", "cem": "CEM (threshold search)",
+          "oracle": "Hindsight Oracle", "recommended": "Recommended calendar",
+          "threshold": "Threshold rules", "random": "Random",
           "recommended_tuned": "Calendar (tuned)", "threshold_tuned": "Threshold (tuned)"}
 
 DRY, WET = PALETTE[1], PALETTE[0]            # season type: below / above median rain

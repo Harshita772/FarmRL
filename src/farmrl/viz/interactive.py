@@ -85,17 +85,20 @@ def inputs_bar(run, policies=None):
 
 
 # --------------------------------------------------------------------------- simulator
-def season_player(steps):
+def season_player(steps, metric="net_return"):
     """Animated timeline for ``{policy: step table}``: rain, soil moisture, pest pressure
-    and cumulative profit, revealed fortnight by fortnight (play button and slider)."""
+    and cumulative profit/net return, revealed fortnight by fortnight (play button and slider)."""
     names = list(steps)
     colors = style.policy_colors(names)
     first = steps[names[0]]
     x = [pd.Timestamp(d).strftime("%d %b") for d in first["date"]]
     n = len(first)
+    if metric not in first.columns:
+        metric = "cum_profit"
+    metric_label = "Net return after penalties (thousand INR/ha)" if metric == "net_return" else "Commercial profit (thousand INR/ha)"
     rows = [("Rain (mm)", None), ("Soil moisture (% of capacity)", "soil_moisture_end"),
-            ("Pest pressure (%)", "pest"), ("Cumulative profit (thousand INR/ha)", "cum_profit")]
-    scale = {"soil_moisture_end": 100, "pest": 100, "cum_profit": 1 / 1000}
+            ("Pest pressure (%)", "pest"), (metric_label, metric)]
+    scale = {"soil_moisture_end": 100, "pest": 100, metric: 1 / 1000}
     fig = make_subplots(rows=4, cols=1, shared_xaxes=True, vertical_spacing=0.07,
                         subplot_titles=[r[0] for r in rows], row_heights=[0.2, 0.25, 0.2, 0.35])
 
@@ -105,7 +108,7 @@ def season_player(steps):
         for _, col in rows[1:]:
             for p in names:
                 out.append(go.Scatter(x=x[:k], y=steps[p][col][:k] * scale[col], mode="lines+markers",
-                                      name=style.label(p), legendgroup=p, showlegend=col == "cum_profit",
+                                      name=style.label(p), legendgroup=p, showlegend=col == metric,
                                       line=dict(color=colors[p], width=2.5), marker=dict(size=6),
                                       hovertemplate=style.label(p) + ": %{y:.1f}<extra></extra>"))
         return out
@@ -115,8 +118,8 @@ def season_player(steps):
         fig.add_trace(tr, row=r, col=c)
     fig.frames = [go.Frame(data=traces(k), name=str(k), traces=list(range(len(where)))) for k in range(1, n + 1)]
     fig.update_xaxes(categoryorder="array", categoryarray=x, range=[-0.5, n - 0.5])
-    lo = min(float(s["cum_profit"].min()) for s in steps.values()) / 1000
-    hi = max(float(s["cum_profit"].max()) for s in steps.values()) / 1000
+    lo = min(float(s[metric].min()) for s in steps.values()) / 1000
+    hi = max(float(s[metric].max()) for s in steps.values()) / 1000
     fig.update_yaxes(range=[0, max(5.0, float(first["rain_mm"].max()) * 1.15)], row=1, col=1)
     fig.update_yaxes(range=[0, 105], row=2, col=1)
     fig.update_yaxes(range=[0, 105], row=3, col=1)
@@ -434,13 +437,30 @@ def line(df, x, y, title, ytitle, color=None, group=None):
             fig.add_trace(go.Scatter(x=d[x], y=d[y], mode="lines+markers", name=str(name), line=dict(color=c, width=2)))
     else:
         fig.add_trace(go.Scatter(x=df[x], y=df[y], mode="lines", line=dict(color=color or style.PALETTE[0], width=2.5), showlegend=False))
-    return _layout(fig, title=title, xaxis_title=x.replace("_", " "), yaxis_title=ytitle, height=380)
+    layout_kw = dict(
+        title=dict(text=f"<b>{title}</b>", x=0, y=0.98, xanchor="left", yanchor="top", font=dict(size=14, color=style.INK)),
+        xaxis_title=x.replace("_", " "), yaxis_title=ytitle, height=380
+    )
+    if group:
+        layout_kw.update(
+            legend=dict(orientation="v", x=1.02, y=1, yanchor="top", font=dict(size=10)),
+            margin=dict(l=50, r=130, t=55, b=45)
+        )
+    else:
+        layout_kw.update(margin=dict(l=50, r=20, t=55, b=45))
+    return _layout(fig, **layout_kw)
 
 
 def bars(x, y, title, ytitle, colors=None, horizontal=False):
     trace = go.Bar(x=y if horizontal else x, y=x if horizontal else y, orientation="h" if horizontal else "v",
                    marker_color=colors or style.PALETTE[0], showlegend=False)
-    return _layout(go.Figure(trace), title=title, **({"xaxis_title": ytitle} if horizontal else {"yaxis_title": ytitle}), height=380)
+    layout_kw = dict(
+        title=dict(text=f"<b>{title}</b>", x=0, y=0.98, xanchor="left", yanchor="top", font=dict(size=14, color=style.INK)),
+        margin=dict(l=50, r=20, t=55, b=45),
+        height=380,
+        **({"xaxis_title": ytitle} if horizontal else {"yaxis_title": ytitle})
+    )
+    return _layout(go.Figure(trace), **layout_kw)
 
 
 def scatter(df, x, y, title, xtitle, ytitle, group=None):
@@ -449,4 +469,15 @@ def scatter(df, x, y, title, xtitle, ytitle, group=None):
     for c, (name, d) in zip(style.PALETTE * 4, groups):
         fig.add_trace(go.Scatter(x=d[x], y=d[y], mode="markers", name=str(name), showlegend=bool(group),
                                  marker=dict(color=c, size=8, line=dict(color="white", width=1))))
-    return _layout(fig, title=title, xaxis_title=xtitle, yaxis_title=ytitle, height=380)
+    layout_kw = dict(
+        title=dict(text=f"<b>{title}</b>", x=0, y=0.98, xanchor="left", yanchor="top", font=dict(size=14, color=style.INK)),
+        xaxis_title=xtitle, yaxis_title=ytitle, height=380
+    )
+    if group:
+        layout_kw.update(
+            legend=dict(orientation="v", x=1.02, y=1, yanchor="top", font=dict(size=10)),
+            margin=dict(l=50, r=130, t=55, b=45)
+        )
+    else:
+        layout_kw.update(margin=dict(l=50, r=20, t=55, b=45))
+    return _layout(fig, **layout_kw)

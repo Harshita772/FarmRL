@@ -18,13 +18,20 @@ from farmrl.viz import interactive, style
 
 run, policies = common.setup("Overview")
 
-st.title("🌾 FarmRL: learning when to fertilise, irrigate and spray")
+st.title("🌾 FarmRL: Crop Input Management & Market Timing")
 st.markdown(
-    "A farmer decides every fortnight how much **nitrogen**, **irrigation** and **pesticide** to "
-    "apply to a crop without knowing the rest of the season's weather, and at harvest whether to "
-    "**sell or store** the grain. FarmRL trains a "
-    "reinforcement-learning agent (PPO) on replayed historical seasons and compares it with "
-    "rule-based practice on seasons it has never seen.")
+    "Wheat cultivation across Northwest India (Punjab & Haryana) follows a six-month Rabi cycle (November–April). "
+    "Farmers make recurring fortnightly decisions on **nitrogen fertilizer**, **tubewell irrigation**, and **chemical pesticide sprays**, "
+    "concluding with a harvest market timing choice to **sell immediately** at the seasonal Minimum Support Price (MSP) "
+    "or **store grain** for 1–2 months in anticipation of price rises. **FarmRL** empirically evaluates whether reinforcement "
+    "learning (PPO & critic-free GRPO) can learn state-contingent input policies that outperform standard government extension calendars, "
+    "protecting farmer profit while mitigating groundwater overdraft and pesticide resistance."
+)
+st.caption(
+    "📄 **Paper:** [2-Page Academic Report (PDF)](https://github.com/Harshita772/FarmRL/blob/main/report/farmrl_report.pdf) · "
+    "🐙 **GitHub:** [Harshita772/FarmRL](https://github.com/Harshita772/FarmRL) · "
+    "🏛️ **IIT Jodhpur — CSL3090: Artificial Intelligence**"
+)
 
 k = interactive.headline(run)
 if k is None:
@@ -54,27 +61,84 @@ common.chart(interactive.inputs_bar(run, policies))
 
 st.header("The decision problem")
 env = run.config["env"]
-a, b = st.columns(2)
-with a:
-    st.markdown(f"**Episode.** One {env['crop']} season in {env['steps_per_season']} fortnightly steps, "
-                f"replaying real weather at *{run.meta['weather_site']}*.")
-    st.markdown("**State** (what the agent sees)")
-    st.latex(r"s_t = \big(t/T,\ \theta_t,\ N^{soil}_t,\ p_t,\ \textstyle\sum R,\ \sum n,\ \sum (R+w),\ P/P_0,\ R_{t-1},\ ET_{0,t-1},\ \rho_t\big)")
-    st.markdown("**Action** (one level of each input per fortnight)")
-    st.latex(rf"n_t \in \{{{', '.join(f'{v:g}' for v in env['nitrogen_levels'])}\}}\ \text{{kg N/ha}},\quad "
-             rf"w_t \in \{{{', '.join(f'{v:g}' for v in env['irrigation_levels'])}\}}\ \text{{mm}},\quad "
-             rf"q_t \in \{{{', '.join(f'{v:g}' for v in env['pesticide_levels'])}\}}")
-    if len(run.meta.get("action_heads", [])) > 3:
-        st.markdown(f"plus, at harvest, the months to store the grain: 0 to {run.meta['action_heads'][3] - 1}. "
-                    f"The state also carries {', '.join(n.replace('_', ' ') for n in run.meta['obs_names'][11:])}.")
-with b:
-    st.markdown("**Reward** (input costs and environmental penalties each step, the harvest at the end)")
-    st.latex(r"r_t = -\big[c_N n_t + c_W w_t + c_P q_t\big] - \big[\lambda_N \max(0, N^{soil}_{t+1} - N_{safe}) + \lambda_P q_t + \lambda_W w_t\big] + \mathbb{1}[t = T-1]\,(Y P - F)")
-    st.markdown("**Yield** (fitted response × water-deficit × pest terms)")
-    st.latex(r"Y = y_{max}\big[1 - e^{-\beta_N (N + N_0)}\big]\Big[1 - \beta_W \max\big(0, \tfrac{W - W^*}{100}\big)^2\Big]\big[1 - K_y(1 - \rho_T)\big]\big[1 - L\,D_{pest}\big]")
-    ym = run.meta["yield_model"]
-    st.caption(f"Parameters used in this run: y_max {ym['y_max'] * ym.get('y_scale', 1):.1f} q/ha, β_N {ym['n_coef']:.4f}, "
-               f"W* {ym['w_opt']:.0f} mm, β_W {ym['w_excess']:.3f}, K_y {ym['ky']:.3f}, L {ym['pest_loss']}.")
+ym = run.meta["yield_model"]
+
+st.subheader("1. Episode Structure")
+st.markdown(
+    f"Each episode simulates **one full {env['crop']} season** in **{env['steps_per_season']} fortnightly decision steps** "
+    f"(from sowing on 1 November through harvest in late April), replaying real historical weather for *{run.meta['weather_site']}*."
+)
+
+st.subheader("2. State Space (What the agent observes)")
+st.latex(
+    r"s_t = \Big[ \frac{t}{T},\ \theta_t,\ \frac{N^{\text{soil}}_t}{100},\ p_t,\ \frac{R^{\text{cum}}_t}{200},\ "
+    r"\frac{N^{\text{cum}}_t}{200},\ \frac{W^{\text{cum}}_t}{500},\ \frac{P_t}{P_0},\ \frac{R_{t-1}}{50},\ "
+    r"\frac{\text{ET}_{0,t-1}}{100},\ \rho_t,\ \frac{c^{\text{pump}}_t}{20},\ e^{\text{spray}}_t \Big]"
+)
+st.markdown("""
+- **$t / T$**: Normalized season progression stage ($0$ to $1$ across the 12 fortnights).
+- **$\theta_t$**: Available root-zone soil moisture as a fraction of field capacity ($0$ to $1$).
+- **$N^{\text{soil}}_t$**: Active mineral nitrogen in the root zone (kg N/ha).
+- **$p_t$**: Pest infestation pressure index ($0$ = uninfested, $1$ = heavy outbreak).
+- **$R^{\text{cum}}_t, N^{\text{cum}}_t, W^{\text{cum}}_t$**: Cumulative seasonal rainfall, fertilizer nitrogen, and total water received to date.
+- **$P_t / P_0$**: Current crop market price index relative to historical trend.
+- **$R_{t-1}, \text{ET}_{0,t-1}$**: Prior fortnight weather lags (rainfall and Penman-Monteith reference evapotranspiration).
+- **$\rho_t = \text{ET}^{\text{cum}}_a / \text{ET}^{\text{cum}}_c$**: Crop water satisfaction ratio (cumulative actual over potential evapotranspiration).
+- **$c^{\text{pump}}_t$**: Marginal tubewell pumping cost (INR/mm), dynamically tracking groundwater lift depth.
+- **$e^{\text{spray}}_t$**: Chemical pesticide efficacy remaining (decays by 25% with each spray due to resistance).
+""")
+
+st.subheader("3. Action Space (Decisions chosen every fortnight)")
+st.latex(
+    rf"n_t \in \{{{", ".join(f"{v:g}" for v in env['nitrogen_levels'])}\}}\text{{ kg N/ha}},\quad "
+    rf"w_t \in \{{{", ".join(f"{v:g}" for v in env['irrigation_levels'])}\}}\text{{ mm}},\quad "
+    rf"q_t \in \{{{", ".join(f"{v:g}" for v in env['pesticide_levels'])}\}}\text{{ doses}}"
+)
+extra_actions = []
+if len(run.meta.get("action_heads", [])) > 3:
+    extra_actions.append(f"- **Post-Harvest Grain Storage ($m$)**: At the final harvest step ($t = 11$), the agent chooses whether to sell immediately ($0$ months) or store grain for $1$ to {run.meta['action_heads'][3] - 1} months in anticipation of market price rises.")
+st.markdown("""
+- **Nitrogen ($n_t$)**: Fertilizer application rate chosen from discrete dosage levels.
+- **Irrigation ($w_t$)**: Tubewell irrigation water depth chosen from discrete volume levels.
+- **Pesticide ($q_t$)**: Chemical spray dosage ($0, 1, 2$ doses).
+""" + ("\n".join(extra_actions) if extra_actions else ""))
+
+st.subheader("4. Reward Function (Economics and Environmental Penalties)")
+st.latex(
+    r"r_t = -\underbrace{\big(c_N n_t + c_W w_t + c_P q_t + C^{\text{pump}}_t(w_t)\big)}_{\text{Input \& Pumping Costs}} "
+    r"- \underbrace{\big(\lambda_N \max(0, N^{\text{soil}}_{t+1} - N_{\text{safe}}) + \lambda_P q_t\big)}_{\text{Environmental Penalties}} "
+    r"+ \underbrace{\mathbb{I}_{[t = T-1]} \big(\text{Revenue} - C_{\text{fixed}}\big)}_{\text{Harvest Revenue Net of Fixed Costs}}"
+)
+st.markdown(r"""
+- **$c_N, c_W, c_P$**: Unit input costs calibrated to official CACP tables (₹12.9/kg N, ₹2.86/mm canal water, ₹1,183/pesticide dose).
+- **$C^{\text{pump}}_t(w_t)$**: Pumping electricity cost, scaling with depth to the water table ($25\text{ m}$ base lift, dropping $0.5\text{ m/year}$).
+- **$\lambda_N, N_{\text{safe}}$**: Penalty weight (₹5/kg) on soil nitrogen exceeding safe root threshold ($N_{\text{safe}} = 80\text{ kg/ha}$) to deter groundwater nitrate leaching.
+- **$\lambda_P$**: Penalty (₹100/dose) discouraging excessive toxic chemical spraying.
+- **$\text{Revenue} - C_{\text{fixed}}$**: Harvest grain yield $\times$ sale price minus storage costs and fixed non-input labor/machinery expenses ($C_{\text{fixed}} = 29{,}450\text{ INR/ha}$).
+""")
+
+st.subheader("5. Biophysical Yield Response Function")
+st.latex(
+    r"Y = y_{\text{max}} \cdot \underbrace{\big(1 - e^{-\beta_N (N + N_0)}\big)}_{\text{Nitrogen (Mitscherlich)}} \cdot "
+    r"\underbrace{\big(1 - K_y(1 - \rho_T)\big)}_{\text{Water Deficit (FAO-33)}} \cdot "
+    r"\underbrace{\prod_{g=1}^4 \big(1 - K_{y,g} \bar{\sigma}^{\text{aer}}_g\big)}_{\text{Waterlogging Hypoxia (FAO-66)}} \cdot "
+    r"\underbrace{\big(1 - L_p D_{\text{pest}}\big)}_{\text{Pest Damage}} \cdot "
+    r"\underbrace{\big(1 - \alpha_H H_{\text{days}}\big)}_{\text{Terminal Heat Stress}}"
+)
+y_plat = ym['y_max'] * ym.get('y_scale', 1)
+n_c = ym['n_coef']
+s_n = env.get('soil_n_start', 30)
+ky_v = ym['ky']
+p_l = ym['pest_loss']
+
+st.markdown(
+    f"- **$y_{{\\text{{max}}}}$**: Potential maximum plateau yield ({y_plat:.1f} q/ha), fitted on 1,719 ICRISAT district-years across 13 states.\n"
+    f"- **$\\beta_N, N_0$**: Nitrogen response curvature ({n_c:.4f}) and baseline soil nitrogen endowment ({s_n:.0f} kg/ha).\n"
+    f"- **$K_y, \\rho_T$**: FAO-33 water-deficit yield factor ({ky_v:.3f}) and full-season evapotranspiration satisfaction ratio.\n"
+    "- **$K_{y,g}, \\bar{\\sigma}^{\\text{aer}}_g$**: Stage-specific root hypoxia yield loss due to waterlogging when excess rainfall/irrigation exceeds drainage capacity.\n"
+    f"- **$L_p, D_{{\\text{{pest}}}}$**: Maximum fractional pest yield loss ($L_p = {p_l:.3f}$ calibrated) and cumulative season pest damage index.\n"
+    "- **$\\alpha_H, H_{\\text{days}}$**: Heat stress penalty coefficient for extreme temperature days during the critical grain filling period."
+)
 
 on = [name for name, flag in (run.meta.get("mechanisms") or {}).items() if flag]
 if on:

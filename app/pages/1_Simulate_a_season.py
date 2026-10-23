@@ -40,25 +40,42 @@ steps = live.simulate(run, agent, season, playable, seed=int(seed), price=price,
 first = next(iter(steps.values()))
 st.subheader(f"Season {season}-{str(season + 1)[-2:]}: {first['rain_mm'].sum():.0f} mm of rain, "
              f"price ₹{first['price'].iloc[0]:,.0f}/quintal")
-best = max(steps, key=lambda p: steps[p]["final_profit"].iloc[0])
+
+financial_view = st.radio(
+    "Financial metric to display in cards and timeline:",
+    ["Net return (after penalties)", "Commercial profit (before penalties)"],
+    index=0,
+    horizontal=True,
+    help="Net return subtracts environmental penalties (excess soil nitrogen leaching and chemical sprays) from farm profit."
+)
+use_net = (financial_view == "Net return (after penalties)")
+metric_col = "final_net_return" if (use_net and "final_net_return" in first.columns) else "final_profit"
+timeline_col = "net_return" if (use_net and "net_return" in first.columns) else "cum_profit"
+
+best = max(steps, key=lambda p: steps[p][metric_col].iloc[0])
 cards = st.columns(len(steps))
 for card, (name, d) in zip(cards, steps.items()):
-    profit, ref = d["final_profit"].iloc[0], steps[best]["final_profit"].iloc[0]
-    card.metric(style.label(name), f"₹{profit:,.0f}/ha",
-                "best" if name == best else f"{profit - ref:+,.0f} vs {style.label(best)}",
+    val = d[metric_col].iloc[0]
+    ref = steps[best][metric_col].iloc[0]
+    profit = d["final_profit"].iloc[0]
+    pen = d["total_penalties"].iloc[0] if "total_penalties" in d.columns else d["penalty"].sum()
+    card.metric(style.label(name), f"₹{val:,.0f}/ha",
+                "best" if name == best else f"{val - ref:+,.0f} vs {style.label(best)}",
                 delta_color="off" if name == best else "normal")
     months = int(d["store_months"].sum())
     sale = f" · stored {months} mo, sold at ₹{d['final_sale_price'].iloc[0]:,.0f}" if months else ""
-    card.caption(f"yield {d['final_yield'].iloc[0]:.1f} q/ha · N {d['nitrogen_kg'].sum():.0f} kg · "
-                 f"water {d['irrigation_mm'].sum():.0f} mm · spray {d['pesticide_level'].sum():.0f}{sale}")
+    pen_str = f" · penalties ₹{pen:,.0f}" if (pen > 0 or penalty != 1.0) else ""
+    card.caption(f"profit ₹{profit:,.0f}{pen_str} · yield {d['final_yield'].iloc[0]:.1f} q/ha · "
+                 f"N {d['nitrogen_kg'].sum():.0f} kg · water {d['irrigation_mm'].sum():.0f} mm · spray {d['pesticide_level'].sum():.0f}{sale}")
 
 st.caption("Press ▶ Play or drag the slider to step through the fortnights.")
-common.chart(interactive.season_player(steps))
+common.chart(interactive.season_player(steps, metric=timeline_col))
 common.chart(interactive.action_bars(steps))
 with st.expander("Step table"):
     name = st.selectbox("Policy", list(steps), format_func=style.label)
     cols = ["step", "date", "rain_mm", "soil_moisture", "soil_n", "pest", "nitrogen_kg", "irrigation_mm",
             "pesticide_level", "store_months", "input_cost", "pumping_cost", "aeration_stress", "spray_efficacy",
-            "penalty", "reward", "cum_profit"]
+            "penalty", "cum_profit", "net_return"]
+    cols = [c for c in cols if c in steps[name].columns]
     st.dataframe(steps[name][cols].assign(date=lambda d: d["date"].dt.strftime("%d %b %Y")).round(2),
                  hide_index=True, use_container_width=True)
