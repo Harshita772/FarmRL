@@ -24,7 +24,7 @@ import streamlit as st  # noqa: E402
 # Import modules for running simulations and accessing saved experiment runs.
 # live handles trained agents and live simulation functionality.
 # runs handles saved experiment data.
-from farmrl import live, runs  # noqa: E402
+from farmrl import runs  # noqa: E402
 
 # Import styling helpers for displaying policy names.
 from farmrl.viz import style  # noqa: E402
@@ -43,7 +43,8 @@ def _load_run(name, stamp):
 # The stamp argument ensures the cache can be refreshed when the run changes.
 @st.cache_resource(show_spinner="Loading the trained agent...")
 def _load_agent(name, stamp):
-    # Retrieve the saved run and load its trained agent.
+    # Lazy import live to prevent module caching issues across Streamlit page reloads
+    from farmrl import live
     return live.load_agent(runs.get(name))
 
 

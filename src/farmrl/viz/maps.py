@@ -135,7 +135,8 @@ def district_values(run, metric="ppo_profit_gain", policy=None):
 
 
 def _prepare(run, metric, policy, geojson):
-    run = runs.get(run)
+    if not (hasattr(run, "districts") and run.districts is not None):
+        run = runs.get(getattr(run, "name", run))
     d, label = district_values(run, metric, policy)
     geojson = geojson or load_geojson()
     coords = {r["district"]: (r["lat"], r["lon"]) for _, r in d.iterrows()} if {"lat", "lon"} <= set(d) else None

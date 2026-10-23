@@ -148,11 +148,15 @@ def get(run=None, runs_dir=None):
     """Resolve a ``Run`` from a Run, a path, a name, or ``None`` for the newest run."""
     if isinstance(run, Run) or type(run).__name__ == "Run" or (hasattr(run, "path") and hasattr(run, "meta")):
         return run
+    if hasattr(run, "path") and hasattr(run, "districts"):
+        return run
     root = Path(runs_dir or RUNS_DIR)
     if run is None:
         names = list_runs(root)
         if not names:
             raise FileNotFoundError(HOW_TO)
         return Run(root / names[0])
-    path = Path(run)
-    return Run(path if (path / "metadata.json").exists() else root / str(run))
+    # Ensure run is converted to string path if a Run or PathLike object was passed
+    run_str = str(getattr(run, "path", getattr(run, "name", run)))
+    path = Path(run_str)
+    return Run(path if (path / "metadata.json").exists() else root / run_str)
