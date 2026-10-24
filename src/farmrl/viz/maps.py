@@ -13,7 +13,23 @@ import numpy as np
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Polygon
 from matplotlib.path import Path as MplPath
-from rapidfuzz import fuzz, process
+try:
+    from rapidfuzz import fuzz, process
+except ImportError:
+    import difflib
+    class _ProcessFallback:
+        @staticmethod
+        def extract(query, choices, scorer=None, limit=5, score_cutoff=0, **kwargs):
+            matches = []
+            q = str(query).lower()
+            for idx, choice in enumerate(choices):
+                score = difflib.SequenceMatcher(None, q, str(choice).lower()).ratio() * 100
+                if score >= score_cutoff:
+                    matches.append((choice, score, idx))
+            matches.sort(key=lambda x: x[1], reverse=True)
+            return matches[:limit]
+    process = _ProcessFallback()
+    fuzz = type("Fuzz", (), {"WRatio": None})
 
 from .. import runs
 from . import style

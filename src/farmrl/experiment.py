@@ -325,6 +325,9 @@ def run_experiment(cfg, run_name=None, seeds=None, train_seeds=1, timesteps=None
                                 objective=tune_cfg.get("objective", "reward"),
                                 max_rounds=int(tune_cfg.get("max_rounds", 4)), log=log)
         (out / "baseline_tuning.json").write_text(json.dumps(tuned, indent=2))
+    elif (out / "baseline_tuning.json").exists():
+        tuned = json.loads((out / "baseline_tuning.json").read_text())
+        log(f"loaded tuned baselines from {out / 'baseline_tuning.json'}")
 
     # --- agent(s) ---
     agents = {}
