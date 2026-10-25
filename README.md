@@ -48,7 +48,7 @@ Rather than relying on toy synthetic models, the **FarmRL** Gymnasium environmen
 |---|---|
 | **State Space ($\mathcal{S}$)** | Normalized 13-dimensional continuous vector (extended to 14-D with weather forecast): stage $t/T$, root moisture $m_t$, soil nitrogen $N_t^{\text{soil}}$, pest pressure $p_t$, cumulative inputs ($R_t^{\text{cum}}, N_t^{\text{cum}}, W_t^{\text{cum}}$), price index, weather lags, water satisfaction ratio, pumping cost, and remaining spray efficacy. |
 | **Action Space ($\mathcal{A}$)** | Factored $\text{MultiDiscrete}([3, 3, 3, 3])$ (81 discrete choices): Nitrogen $\{0, 20, 40\}\text{ kg/ha}$ $\times$ Irrigation $\{0, 37.5, 75\}\text{ mm}$ $\times$ Pesticide $\{0, 1, 2\}$ $\times$ Harvest Storage $\{0, 1, 2\}\text{ months}$ (masked until step $t=11$). |
-| **Reward ($\mathcal{R}$)** | Net farm profit minus leaching ($\lambda_N = 5\text{ INR/kg}$) and pesticide ($\lambda_P = 100\text{ INR/dose}$) penalties, scaled by $S_R = 10{,}000$: <br> $R_t = -\big(c_N N_t + c_W W_t + c_P P_t + C^{\text{pump}}_t(W_t)\big) - \big(\lambda_N [N^{\text{soil}}_{t+1} - 80]_+ + \lambda_P P_t\big) + \mathbb{I}_{[t=11]}(\text{Rev}_T - C_{\text{fixed}})$ |
+| **Reward ($\mathcal{R}$)** | Net farm profit minus leaching ($\lambda_N = 5\text{ INR/kg}$) and pesticide ($\lambda_P = 100\text{ INR/dose}$) penalties, scaled by $S_R = 10{,}000$: <br> $`R_t = -\big(c_N N_t + c_W W_t + c_P P_t + C^{\text{pump}}_t(W_t)\big) - \big(\lambda_N [N^{\text{soil}}_{t+1} - 80]_+ + \lambda_P P_t\big) + \mathbb{I}_{[t=11]}(\text{Rev}_T - C_{\text{fixed}})`$ |
 
 ---
 
