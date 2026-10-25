@@ -152,7 +152,7 @@ def district_values(run, metric="ppo_profit_gain", policy=None):
 
 def _prepare(run, metric, policy, geojson):
     if not (hasattr(run, "districts") and run.districts is not None):
-        run = runs.get(getattr(run, "name", run))
+        run = runs.get(getattr(run, "path", getattr(run, "name", run)))
     d, label = district_values(run, metric, policy)
     geojson = geojson or load_geojson()
     coords = {r["district"]: (r["lat"], r["lon"]) for _, r in d.iterrows()} if {"lat", "lon"} <= set(d) else None
@@ -167,7 +167,10 @@ def _prepare(run, metric, policy, geojson):
 def write_subset(run=None, geojson=None, path=GEO_SUBSET):
     """Save the districts around the data as a small GeoJSON the dashboard can ship with."""
     run, geojson, matched, *_ = _prepare(run, "profit", None, geojson)
+    key = name_key(geojson)
     near, _ = neighbourhood(geojson, list(matched.values()))
+    for f in near:
+        f["id"] = str(f["properties"][key])
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     Path(path).write_text(json.dumps({"type": "FeatureCollection", "features": near}), encoding="utf-8")
     return Path(path)
@@ -215,6 +218,8 @@ def interactive_map(run=None, metric="ppo_profit_gain", policy=None, geojson=Non
     run, geojson, matched, values, label, missing = _prepare(run, metric, policy, geojson)
     key = name_key(geojson)
     near, (x0, x1, y0, y1) = neighbourhood(geojson, list(matched.values()))
+    for f in near:
+        f["id"] = str(f["properties"][key])
     names = list(matched)
     geo_names = [matched[n]["properties"][key] for n in names]
     diverging = values.min() < 0 < values.max()
@@ -222,20 +227,20 @@ def interactive_map(run=None, metric="ppo_profit_gain", policy=None, geojson=Non
     subset = {"type": "FeatureCollection", "features": near}
     context = [f["properties"][key] for f in near]
     fig = go.Figure()
-    fig.add_trace(go.Choropleth(geojson=subset, featureidkey=f"properties.{key}", locations=context,
+    fig.add_trace(go.Choropleth(geojson=subset, featureidkey="id", locations=context,
                                 z=[0] * len(context), colorscale=[[0, "#f0efec"], [1, "#f0efec"]],
                                 showscale=False, marker_line_color="white", marker_line_width=0.6,
                                 hoverinfo="skip"))
     fig.add_trace(go.Choropleth(
-        geojson=subset, featureidkey=f"properties.{key}", locations=geo_names,
+        geojson=subset, featureidkey="id", locations=geo_names,
         z=[float(values[n]) for n in names], text=names,
         colorscale=[[0, style.DIVERGING[0]], [0.5, style.DIVERGING[1]], [1, style.DIVERGING[2]]] if diverging else style.SEQUENTIAL,
         zmin=-lim if diverging else float(values.min()), zmax=lim if diverging else float(values.max()),
         marker_line_color=style.INK_2, marker_line_width=0.8, colorbar=dict(title=dict(text=label, side="right")),
         hovertemplate="<b>%{text}</b><br>" + label + ": %{z:,.0f}<extra></extra>"))
-    fig.update_geos(visible=False, lonaxis_range=[x0, x1], lataxis_range=[y0, y1], projection_type="mercator")
+    fig.update_geos(fitbounds="locations", visible=False, projection_type="mercator")
     fig.update_layout(title=label, margin=dict(l=0, r=0, t=45, b=0), height=560,
-                      font=style.PLOTLY_LAYOUT["font"])
+                      dragmode="pan", font=style.PLOTLY_LAYOUT["font"])
     if missing:
         fig.add_annotation(text="not matched to a boundary: " + ", ".join(missing), xref="paper",
                            yref="paper", x=0, y=0, showarrow=False, font=dict(size=11, color=style.INK_2))

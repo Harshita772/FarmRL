@@ -157,6 +157,6 @@ def get(run=None, runs_dir=None):
             raise FileNotFoundError(HOW_TO)
         return Run(root / names[0])
     # Ensure run is converted to string path if a Run or PathLike object was passed
-    run_str = str(getattr(run, "path", getattr(run, "name", run)))
+    run_str = str(getattr(run, "path", run))
     path = Path(run_str)
     return Run(path if (path / "metadata.json").exists() else root / run_str)
