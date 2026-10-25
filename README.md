@@ -56,7 +56,7 @@ Rather than relying on toy synthetic models, the **FarmRL** Gymnasium environmen
 
 All policies are evaluated across 7 unseen held-out test seasons (2017-2023, 30 stochastic replicates/season) in Punjab:
 
-![Held-out net profit distributions](report/figures/profit_distribution.png)
+![Held-out net profit distributions](results/runs/v4/figures/profit_distribution.png)
 
 | Policy / Configuration | Profit (INR/ha) | % of Oracle | Yield (q/ha) | Irrigation (mm) | Sprays |
 |---|---|---|---|---|---|
@@ -83,10 +83,10 @@ All policies are evaluated across 7 unseen held-out test seasons (2017-2023, 30 
 
 Through 12 systematic ablation studies in [`experiments/`](experiments/README.md) across 5 seeds, we investigated the "Rule vs RL" performance and discovered where RL decisively outperforms heuristic policies:
 
-![Performance sweeps](report/figures/pest_sweep_pub.png)
-*(a) Pest severity sweep ($L_p \in [0.115, 0.50]$)*
+![Performance sweeps](results/runs/v4/figures/pest_sweep_pub.png)
+*(a) Pest severity sweep* ($`L_p \in [0.115, 0.50]`$)
 
-![Action layout & weather forecast](report/figures/layout_forecast_pub.png)
+![Action layout & weather forecast](results/runs/v4/figures/layout_forecast_pub.png)
 *(b) Action layout and next-fortnight rainfall forecast*
 
 ### 12-Study Systematic Progression
