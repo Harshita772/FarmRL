@@ -117,6 +117,30 @@ def match_districts(names, geojson, coords=None, threshold=80):
     return out
 
 
+def _signed_area(ring):
+    r = np.asarray(ring, dtype=float)[:, :2]
+    return float(np.sum(r[:-1, 0] * r[1:, 1] - r[1:, 0] * r[:-1, 1]) / 2)
+
+
+def for_plotly(feature):
+    """Copy of ``feature`` with its rings wound the way plotly's map engine (d3-geo) reads
+    them: outer rings clockwise, holes counter-clockwise. GeoJSON (RFC 7946) uses the
+    opposite order, and plotly fills such a polygon inside out (the whole globe except
+    the district)."""
+    g = feature["geometry"]
+    polys = [g["coordinates"]] if g["type"] == "Polygon" else g["coordinates"]
+    fixed = []
+    for poly in polys:
+        rings_ = []
+        for i, ring in enumerate(poly):
+            clockwise = _signed_area(ring) < 0
+            want_clockwise = i == 0
+            rings_.append(list(ring) if clockwise == want_clockwise else list(ring)[::-1])
+        fixed.append(rings_)
+    geometry = {"type": g["type"], "coordinates": fixed[0] if g["type"] == "Polygon" else fixed}
+    return {**feature, "geometry": geometry}
+
+
 def neighbourhood(geojson, features, pad=0.8):
     """Features whose first ring overlaps the padded bounding box of ``features``."""
     pts = np.vstack([r for f in features for r in rings(f)])
@@ -218,8 +242,7 @@ def interactive_map(run=None, metric="ppo_profit_gain", policy=None, geojson=Non
     run, geojson, matched, values, label, missing = _prepare(run, metric, policy, geojson)
     key = name_key(geojson)
     near, (x0, x1, y0, y1) = neighbourhood(geojson, list(matched.values()))
-    for f in near:
-        f["id"] = str(f["properties"][key])
+    near = [{**for_plotly(f), "id": str(f["properties"][key])} for f in near]
     names = list(matched)
     geo_names = [matched[n]["properties"][key] for n in names]
     diverging = values.min() < 0 < values.max()

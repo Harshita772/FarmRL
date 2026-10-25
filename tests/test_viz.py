@@ -214,6 +214,27 @@ def test_maps_from_district_table(tiny_run, tmp_path, monkeypatch):
         maps.static_map(tiny_run, geojson=GEOJSON)
 
 
+def test_interactive_map_winds_polygons_for_plotly(tiny_run, monkeypatch):
+    """GeoJSON outer rings run counter-clockwise; plotly (d3-geo) fills those inside out,
+    i.e. the whole globe except the district, unless they are rewound to clockwise."""
+    table = pd.DataFrame({"policy": ["ppo", "recommended"] * 2, "district": ["Hissar", "Hissar", "Karnal", "Karnal"],
+                          "lat": [29.5, 29.5, 29.5, 29.5], "lon": [75.5, 75.5, 77.0, 77.0],
+                          "profit": [80e3, 70e3, 78e3, 79e3], "ppo_profit_gain": [0, 10e3, 0, -1e3]})
+    monkeypatch.setitem(tiny_run.__dict__, "districts", table)
+    original = [f["geometry"]["coordinates"][0][:] for f in GEOJSON["features"]]
+    assert all(maps._signed_area(ring) > 0 for ring in original)                  # RFC 7946: counter-clockwise
+    fig = maps.interactive_map(tiny_run, geojson=GEOJSON)
+    for trace in fig.data:
+        for f in trace.geojson["features"]:
+            assert maps._signed_area(f["geometry"]["coordinates"][0]) < 0          # what plotly needs
+    assert [f["geometry"]["coordinates"][0] for f in GEOJSON["features"]] == original   # input untouched
+    assert all("id" not in f for f in GEOJSON["features"])
+    holed = {"type": "Feature", "properties": {}, "geometry": {"type": "MultiPolygon", "coordinates": [[
+        [[0, 0], [4, 0], [4, 4], [0, 4], [0, 0]], [[1, 1], [1, 2], [2, 2], [2, 1], [1, 1]]]]}}
+    outer, hole = maps.for_plotly(holed)["geometry"]["coordinates"][0]
+    assert maps._signed_area(outer) < 0 < maps._signed_area(hole)
+
+
 # ------------------------------------------------------------------------ plotly + live
 def test_interactive_charts(tiny_run):
     pol = tiny_run.policies()
