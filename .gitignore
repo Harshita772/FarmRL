@@ -221,7 +221,7 @@ __marimo__/
 
 # FarmRL project
 .ipynb_checkpoints/
-data/raw/*
+# data/raw/*
 !data/raw/.gitkeep
 results/models/*
 !results/models/.gitkeep
