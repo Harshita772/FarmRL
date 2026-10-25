@@ -264,18 +264,40 @@ def dry_wet_table(run, policies=None, split="test"):
 
 
 def seed_profit(run, policies=None):
-    """Held-out profit of every PPO training seed (bars) against the other policies (lines)."""
+    """Held-out profit of every policy, best first, as horizontal bars with the names on the
+    axis. PPO's bar is the mean over its training seeds, with a +/- std whisker and one dot
+    per seed, so the spread across seeds can be read against the gaps between policies."""
     seeds = run.seed_summary[run.seed_summary["split"] == "test"].sort_values("train_seed")
     means = _test(run, policies).groupby("policy")["profit"].mean().drop(index=AGENT, errors="ignore")
-    colors = style.policy_colors([AGENT, *means.index])
-    fig = go.Figure(go.Bar(x=[f"seed {int(s)}" for s in seeds["train_seed"]], y=seeds["profit"], name="PPO",
-                           marker_color=colors[AGENT], hovertemplate="%{x}: %{y:,.0f} INR/ha<extra></extra>"))
-    for name, value in means.sort_values(ascending=False).items():
-        fig.add_hline(y=value, line=dict(color=colors[name], dash="dash", width=1.5),
-                      annotation_text=style.label(name), annotation_position="top right")
     mean, std = seeds["profit"].mean(), seeds["profit"].std() if len(seeds) > 1 else 0.0
-    return _layout(fig, title=f"PPO on held-out seasons, {len(seeds)} training seeds: {mean:,.0f} ± {std:,.0f} INR/ha",
-                   yaxis_title="INR per hectare", showlegend=False)
+    table = pd.concat([pd.Series({AGENT: mean}), means]).sort_values()      # plotly draws bottom-up
+    colors = style.policy_colors(table.index)
+    names = [style.label(p) + (f" (mean of {len(seeds)} seeds)" if p == AGENT else "") for p in table.index]
+    fig = go.Figure(go.Bar(
+        y=names, x=table.values, orientation="h", marker_color=[colors[p] for p in table.index],
+        marker_line_width=0, width=0.62, hovertemplate="%{y}: %{x:,.0f} INR/ha<extra></extra>"))
+    row = names[list(table.index).index(AGENT)]
+    if len(seeds) > 1:                                   # whisker: mean +/- std over seeds
+        fig.add_trace(go.Scatter(x=[mean], y=[row], mode="markers", marker=dict(size=1, color=style.INK),
+                                 error_x=dict(type="data", array=[std], color=style.INK, thickness=1.5, width=7),
+                                 hoverinfo="skip"))
+    fig.add_trace(go.Scatter(
+        y=[row] * len(seeds), x=seeds["profit"], mode="markers",
+        marker=dict(size=9, color=style.SURFACE, line=dict(color=style.INK, width=1.5)),
+        customdata=seeds["train_seed"].astype(int),
+        hovertemplate="PPO, seed %{customdata}: %{x:,.0f} INR/ha<extra></extra>"))
+    # value labels just past the last mark of each row (for PPO that is a seed dot or the whisker)
+    right = [max(float(seeds["profit"].max()), mean + std) if p == AGENT else float(v) for p, v in table.items()]
+    fig.add_trace(go.Scatter(x=right, y=names, mode="text", text=[f"  {v:,.0f}" for v in table.values],
+                             textposition="middle right", textfont=dict(color=style.INK_2, size=12),
+                             hoverinfo="skip", cliponaxis=False))
+    top = float(table.max())
+    return _layout(fig, title=f"Held-out profit by policy · PPO {mean:,.0f} ± {std:,.0f} INR/ha over {len(seeds)} seeds",
+                   xaxis=dict(title="net profit (INR per hectare)", range=[min(0.0, float(table.min()) * 1.1), top * 1.14],
+                              gridcolor=style.GRID, linecolor=style.AXIS, tickformat=","),
+                   yaxis=dict(title=None, automargin=True, linecolor=style.AXIS, showgrid=False),
+                   showlegend=False, bargap=0.35, height=110 + 46 * len(table),
+                   margin=dict(l=10, r=30, t=60, b=50))
 
 
 def seed_table(run):
