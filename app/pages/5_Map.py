@@ -32,13 +32,14 @@ html_path = maps_dir / f"district_{metric}.html"
 png_path = maps_dir / f"district_{metric}.png"
 pdf_path = maps_dir / f"district_{metric}.pdf"
 
-has_prerendered = html_path.exists() or png_path.exists() or pdf_path.exists()
+is_default_policy = (relative and policy == "recommended") or (not relative and policy == "ppo")
+has_prerendered = is_default_policy and (html_path.exists() or png_path.exists() or pdf_path.exists())
 
 tab_interactive, tab_static = st.tabs(["🗺️ Interactive Choropleth", "📊 Static Publication Figure"])
 
 with tab_interactive:
-    # 1. Prefer local pre-rendered interactive HTML choropleth if available
-    if html_path.exists():
+    # 1. Prefer local pre-rendered interactive HTML choropleth if available and default policy selected
+    if is_default_policy and html_path.exists():
         html_content = html_path.read_text(encoding="utf-8")
         components.html(html_content, height=600, scrolling=False)
         st.caption(f"🗺️ Loaded interactive choropleth from `{run.name}/maps/{html_path.name}`")
@@ -55,8 +56,8 @@ with tab_interactive:
             st.warning(f"Could not render interactive map: {ex}")
 
 with tab_static:
-    # 1. Prefer local pre-rendered 300 DPI PNG if available
-    if png_path.exists():
+    # 1. Prefer local pre-rendered 300 DPI PNG if available and default policy selected
+    if is_default_policy and png_path.exists():
         st.image(str(png_path), caption=f"Static Choropleth: {maps.METRICS.get(metric, metric)}", use_container_width=True)
         col1, col2, _ = st.columns([1, 1, 2])
         if pdf_path.exists():
